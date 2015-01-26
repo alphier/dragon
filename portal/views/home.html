@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Home</title>
+	<link rel="stylesheet" type="text/css" href="css/metro/easyui.css">
+	<link rel="stylesheet" type="text/css" href="css/icon.css">
+	<script type="text/javascript" src="lib/jquery.min.js"></script>
+	<script type="text/javascript" src="lib/jquery.easyui.min.js"></script>
+</head>
+<body>	
+	<div style="width:100%;padding:5px;font-size:16px;">
+	你好！<%= user.username %>
+		<a id="quit" class="btn" href="/logout" style="font-size:16px">退出</a>
+		<a id="mdpwd" class="btn" href="#" style="font-size:16px">修改密码</a>
+		
+		<a id="setID" class="easyui-linkbutton" href="#" style="margin-left:100px;width:100px;">
+			<span style="font-size:16px;">设置ID</span>
+		</a>
+		<a id="remoteDel" class="easyui-linkbutton" href="#" style="margin-left:100px;width:150px;">
+			<span style="font-size:16px;">远程删除</span>
+		</a>
+		<label id="delResult" style="font-size:16px;"></label>
+	</div>	
+	<div class="easyui-panel" title="设备" style="padding:5px;">
+		<style>.panel-title{font-size:16px}</style>
+		<button id="add" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
+			<span style="font-size:16px;">添加设备</span>
+		</button>
+		<label style="font-size:16px;">用户ID：</label>
+		<input class="easyui-numberbox" type="text" id="username" name="username" data-options="required:true" style="width:100px;font-size:16px;">
+		<label style="font-size:16px;">(1 ~ 65535)</label>
+		<label style="font-size:16px;">频  道：</label>
+		<input class="easyui-numberbox" type="text" id="channel" name="channel" data-options="required:true" style="width:100px;font-size:16px;">
+		<label style="font-size:16px;">(1 ~ 20)</label>
+		<label id="addResult" style="font-size:16px;color:red;"></label>		
+		<div style="margin:5px 0;"></div>
+		<table style="width: 100%">
+			<tbody>
+				<tr>
+					<td style="vertical-align: top; width: 550px">
+						<div>
+							<table id="dg" class="easyui-datagrid" style="width:500px;"	data-options="
+								singleSelect:true,
+								pagination:true,
+								pageSize:10,
+								url:'userid_datagrid.json'
+								,method:'get'">
+								<style>
+								  .datagrid-cell{
+									font-size:16px;
+								  }
+								</style>
+								<thead>
+									<tr>
+										<th data-options="field:'userid',width:100">用户ID</th>
+										<th data-options="field:'channel',width:100">频道号</th>
+										<th data-options="field:'_operate',width:100,align:'center',formatter:formatOper">操作</th>
+									</tr>
+								</thead>
+							</table>
+							<label id="delResult" style="font-size:16px;"><label>
+						</div>
+					</td>
+					<td style="vertical-align: top">
+						<div style="height: 180px">
+							<input id="content" class="easyui-textbox" id="msg" name="message" data-options="multiline:true" style="padding:5px;width:400px;height:140px;font-size:16px;" >
+							<div style="padding-top:10px;">
+								<button id="send" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-back'">
+									<span style="font-size:16px;">发送数据</span>
+								</button>
+								<label id="result" style="font-size:16px;"><label>
+							</div>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<div style="margin:10px 0;"></div>
+	<div style="width:100%;padding:5px;font-size:16px;">
+		<button id="clear" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-cancel'">
+			<label style="font-size:16px;">清空历史</label>
+		</button>
+		<label id="retransResult" style="font-size:16px;"><label>
+	</div>
+	<div class="easyui-panel" title="发送历史" style="padding:5px;">
+		<table id="hisdg" class="easyui-datagrid" style="width:900px;" nowrap=false data-options="
+			singleSelect:true,
+			pagination:true,
+			pageSize:10,
+			url:'history_datagrid.json',
+			method:'get'">
+			<style>.datagrid-cell{font-size:16px;}</style>
+			<thead>
+				<tr>
+					<th data-options="field:'_operate',width:60,align:'center',formatter:formatRetrans">操作</th>
+					<th data-options="field:'index',width:60,align:'center'">编号</th>
+					<th data-options="field:'time',width:200,align:'center'">发送时间</th>
+					<th data-options="field:'userid',width:60,align:'center'">用户ID</th>
+					<th data-options="field:'channel',width:60,align:'center'">频道号</th>
+					<th data-options="field:'answer',width:40,align:'center'">应答</th>
+					<th data-options="field:'message',width:400,align:'left'">发送内容</th>
+				</tr>
+			</thead>
+		</table>
+	</div>
+	<div id="w" class="easyui-dialog" title="修改密码" closed="true" data-options="iconCls:'icon-edit'" style="text-align:center;width:320px;height:240px;padding:10px;">		
+		<div style="margin-bottom:10px">
+			<span style="font-size:16px;">旧密码：</span>
+			<input class="easyui-textbox" type="password" id="oldpwd" name="oldpwd" style="width:200px;height:40px;padding:12px" data-options="required:true,prompt:'Password',iconCls:'icon-lock',iconWidth:38">
+		</div>		
+		<div style="margin-bottom:20px">
+			<span style="font-size:16px;">新密码：</span>
+			<input class="easyui-textbox" type="password" id="newpwd"  name="newpwd" style="width:200px;height:40px;padding:12px" data-options="required:true,prompt:'Password',iconCls:'icon-lock',iconWidth:38">
+		</div>			
+			<label id="mdresult" style="font-size:16px;color:red;"></label>		
+		<div style="margin-bottom:10px">
+			<button id="modify" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-ok'" style="display:inline-block;padding:5px;width:100px;">
+				<span style="font-size:16px;">确定</span>
+			</button>
+		</div>
+	</div>
+</body>
+<script type="text/javascript">
+	$("#mdpwd").click(function(){
+		$('#oldpwd').attr("value","");
+		$('#newpwd').attr("value","");
+		$('#mdresult').html('');
+		$('#w').window('open');
+	});
+	$("#modify").click(function(){
+		if($('#oldpwd').val() === ''){
+			$("#mdresult").html("旧密码不能为空！");
+			return;
+		}
+		if($('#newpwd').val() === ''){
+			$("#mdresult").html("新密码不能为空！");
+			return;
+		}
+		//===============================>添加代码
+		$.post('modifyPwd',{oldpwd:$('#oldpwd').val(),newpwd:$('#newpwd').val()}, function(data, status){
+			if (data === 'success'){
+				$('#w').window('close');
+			}
+			else if (data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#mdresult").html(data);
+			}
+		});
+	});
+	$("#add").click(function() {
+		if($('#username').val() === ''){
+			$("#addResult").html("用户ID不能为空！");
+			return;
+		}
+		var intUserId = parseInt($('#username').val());
+		if(intUserId < 1 || intUserId > 65535){
+			$("#addResult").html("用户ID超出取值范围，请重新输入！");
+			return;
+		}
+		if($('#channel').val() === ''){
+			$("#addResult").html("频道号不能为空！");
+			return;
+		}
+		var intChannel = parseInt($('#channel').val());
+		if(intChannel < 1 || intChannel > 20){
+			$("#addResult").html("频道号超出取值范围，请重新输入！");
+			return;
+		}
+		$.post('addUser',{username: $('#username').val(), channel: $('#channel').val()},function(data, status){
+			if (data === 'success'){
+				$("#addResult").html("");
+				$('#dg').datagrid('reload');
+			} else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#addResult").html(data);
+			}
+		});		
+	});
+	$("#send").click(function() {
+		var row = $('#dg').datagrid('getSelected');	
+		if (!row){
+			$("#result").css({"color":"red"});
+			$("#result").html("请选中一行");
+			return;
+		}
+		if($('#content').val() === ''){
+			$("#result").css({"color":"red"});
+			$("#result").html("发送内容不能为空！");
+			return;
+		}
+		$.post('sendMessage',{userid:row.userid, channel:row.channel, message: $('#content').val()}, function(data, status){
+			if (data === 'success'){
+				$("#result").css({"color":"black"});
+				$("#result").html("发送成功！");
+				$('#hisdg').datagrid('reload');
+			} else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#result").css({"color":"red"});
+				$("#result").html(data);				
+			}
+		});
+	});
+	$("#clear").click(function() {
+		$.post('clearHistory', {}, function(data, status){
+			if (data === 'success'){
+				$('#hisdg').datagrid('reload');
+			}
+			if(data === 'session expired'){
+				window.location = "/";
+			}
+		});
+	});
+	$("#remoteDel").click(function() {
+		var row = $('#dg').datagrid('getSelected');	
+		$("#delResult").html("");
+		if (!row){
+			$("#delResult").css({"color":"red"});
+			$("#delResult").html("请选中一行");
+			return;
+		}
+		$.post('remoteDelete', {userid:row.userid, channel:row.channel}, function(data, status){
+			if (data === 'success'){
+				$("#delResult").css({"color":"black"});
+				$("#delResult").html("删除成功");
+			} else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#delResult").css({"color":"red"});
+				$("#delResult").html(data);
+			}
+		});
+	});
+	function formatRetrans(val,row,index){
+		$('#hisdg').datagrid('selectRow',index);
+		return '<a href="#" style="font-size:16px;" onclick="retransmit('+index+')">重发</a>';
+	}
+	function retransmit(index){
+		$('#hisdg').datagrid('selectRow',index);
+		var row = $('#hisdg').datagrid('getSelected');
+		$.post('sendMessage',{userid:row.userid, channel:row.channel, message: row.message},function(data, status){
+			if (data === 'success'){
+				$("#retransResult").css({"color":"black"});
+				$("#retransResult").html("发送成功！");
+				$('#hisdg').datagrid('reload');
+			} else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#retransResult").css({"color":"red"});
+				$("#retransResult").html(data);
+			}
+		});
+	}
+	function formatOper(val,row,index){  
+		$('#dg').datagrid('selectRow',index);
+		return '<a href="#" style="font-size:16px;" onclick="deleteUser('+index+')">删除</a>';
+	}
+	function deleteUser(index){  
+		$('#dg').datagrid('selectRow',index);
+		var row = $('#dg').datagrid('getSelected');		
+		$.post('deleteUser',{id: row._id},function(data, status){
+			if (data === 'success'){
+				$("#result").css({"color":"black"});
+				$('#dg').datagrid('reload');
+			}else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#delResult").css({"color":"red"});
+				$("#delResult").html("删除失败！");
+			}
+		});			
+	} 	
+</script>
+</html>
