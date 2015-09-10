@@ -10,6 +10,8 @@ exports.communicate = function (spec) {
 		RECEIVE_ANSWER = 2,
 		RECEIVE_DEL_ANSWER = 3,
 		DELETING = 4,
+		SETTING = 5,
+		RECEIVE_SET_ANSWER = 6,
 		server = dgram.createSocket('udp4'),
 		DIS_TIME = 5 * 60 * 1000,	//断线时长设置为1小时
 		INTERVAL_TIME = 5000,
@@ -64,8 +66,8 @@ exports.communicate = function (spec) {
 			msgbuffer.writeUInt8(0xc1, 1);					//指令，表明是数据
 			msgbuffer.writeUInt8(parseInt(ch), 2);			//频道号
 			msgbuffer.writeUInt16BE(parseInt(uid), 3);		//用户ID
-			msgbuffer.writeUInt8(idx, 5);			//数据编号
-			msgbuffer.writeUInt8(msg.length+2, 6);	//数据长度+开始位+校验和
+			msgbuffer.writeUInt8(msg.length+2, 5);			//数据长度+开始位+校验和
+			msgbuffer.writeUInt8(idx, 6);			//数据编号
 			msgbuffer.writeUInt8(0x00, 7);			//开始位
 			msgbuffer.write(msg, 8);				//发送数据
 
@@ -83,12 +85,47 @@ exports.communicate = function (spec) {
 			
 			return msgbuffer;
 		},
-		assembleDelInst = function (ch, uid) {
-			var dbuf = new Buffer(5);
-			dbuf.writeUInt8(0xaa, 0);		//报文头
-			dbuf.writeUInt8(0x7a, 1);		//指令，表明是数据
+		assembleSetInst = function (ch, uid, id) {
+			var setbuffer = new Buffer(10);
+			setbuffer.writeUInt8(0xaa, 0);					//报文头
+			setbuffer.writeUInt8(0xc0, 1);					//指令，表明是设置
+			setbuffer.writeUInt8(parseInt(ch), 2);			//频道号
+			setbuffer.writeUInt16BE(parseInt(uid), 3);		//用户ID
+			setbuffer.writeUInt8(0x04, 5);					//2+1+1
+			setbuffer.writeUInt8(0xc0, 6);
+			setbuffer.writeUInt8(0x01, 7);
+			setbuffer.writeUInt8(parseInt(id), 8);			//设置id
+			var sum = 0;
+			for (var i in setbuffer.toJSON()){
+				if(i == setbuffer.length-1 )
+					break;
+				sum += setbuffer[i];
+			}
+			var tmp = new Buffer(2);
+			tmp.writeUInt16BE(sum, 0);
+			setbuffer.writeUInt8(tmp[1], 9);				//校验和
+			
+			return setbuffer;
+		},
+		assembleDelInst = function (ch, uid, id) {
+			var dbuf = new Buffer(10);
+			dbuf.writeUInt8(0xaa, 0);					//报文头
+			dbuf.writeUInt8(0x7a, 1);					//指令，表明是删除
 			dbuf.writeUInt8(parseInt(ch), 2);			//频道号
 			dbuf.writeUInt16BE(parseInt(uid), 3);		//用户ID
+			dbuf.writeUInt8(0x04, 5);					//长度：2+1+1
+			dbuf.writeUInt8(0x7a, 6);
+			dbuf.writeUInt8(0x01, 7);
+			dbuf.writeUInt8(parseInt(id), 8);			//设置id
+			var sum = 0;
+			for (var i in dbuf.toJSON()){
+				if(i == dbuf.length-1 )
+					break;
+				sum += dbuf[i];
+			}
+			var tmp = new Buffer(2);
+			tmp.writeUInt16BE(sum, 0);
+			setbuffer.writeUInt8(tmp[1], 9);			//校验和
 			
 			return dbuf;
 		};
@@ -128,20 +165,20 @@ exports.communicate = function (spec) {
 		
 		if(hashMap.hasOwnProperty(deviceId)){
 			var buf = assembleDelInst(channel, userId);
-			logger.info('deleting device ' + deviceId + ' channel:' + channel + ' userId:' + userId);			
+			logger.info('deleting device ' + deviceId + ' channel:' + channel + ' userId:' + userId);
 			server.send(buf, 0, buf.length, hashMap[deviceId].port, hashMap[deviceId].ip, 
 				function (err, bytes){
 					logger.info('sending ' + bytes +  ' bytes to ' + hashMap[deviceId].ip + ':' + hashMap[deviceId].port);
 					if(bytes > 0){
 						hashMap[deviceId].state = DELETING;
 						hashMap[deviceId].sendTs = new Date();
-						var intervalId = setInterval(function (){							
+						var intervalId = setInterval(function (){
 							//收到设备应答
 							if(hashMap[deviceId].state === RECEIVE_DEL_ANSWER){
 								hashMap[deviceId].state = READY;
 								clearInterval(intervalId);
 								callback('answer', bytes);
-							}							
+							}
 							//2s没有收到answer，认为无应答
 							if(new Date() - hashMap[deviceId].sendTs > TIMEOUT_SENDING){
 								hashMap[deviceId].state = READY;
@@ -175,7 +212,6 @@ exports.communicate = function (spec) {
 						hashMap[deviceId].state = SENDING;						
 						hashMap[deviceId].sendTs = new Date();
 						var intervalId = setInterval(function (){
-							
 							//收到设备应答
 							if(hashMap[deviceId].state === RECEIVE_ANSWER){
 								hashMap[deviceId].state = READY;
@@ -250,7 +286,7 @@ exports.communicate = function (spec) {
 		    			}
 		    		});
 		    	}
-		    } else if (buffer.length === 4){ //收到发送数据应答
+		    } else if (buffer.length === 2 && buffer[1] === 0x00){ //收到发送数据应答
 		    	for(var idx in hashMap){
 			    	if(hashMap.hasOwnProperty(idx) && 
 			    		hashMap[idx].ip === remote.address && 
@@ -263,22 +299,38 @@ exports.communicate = function (spec) {
 				    		hashMap[idx].state === SENDING ){
 				    		//将该设备状态置为应答状态
 				    		hashMap[idx].state = RECEIVE_ANSWER;
+							break;
 				    	}
-						break;
 			    	}
 			    }
-		    } else if (buffer.length === 5) {//收到远程删除应答
+		    } else if (buffer.length === 2 && 
+		    		buffer[0] === 0x7a && 
+		    		buffer[1] === 0x01) {//收到远程删除应答
 		    	for(var idx in hashMap){
 			    	if(hashMap.hasOwnProperty(idx) && 
 			    		hashMap[idx].ip === remote.address && 
 			    		hashMap[idx].port === remote.port){
 				    	if(hashMap[idx].state === DELETING ){
 				    		hashMap[idx].state = RECEIVE_DEL_ANSWER;
+							break;
 				    	}
-						break;
 			    	}
 			    }
-		    } else {
+		    } else if(buffer.length === 2 && 
+		    		buffer[0] === 0xc0 && 
+		    		buffer[1] === 0x01){	//收到设置id应答
+		    	for(var idx in hashMap){
+			    	if(hashMap.hasOwnProperty(idx) && 
+			    		hashMap[idx].ip === remote.address && 
+			    		hashMap[idx].port === remote.port){
+				    	if(hashMap[idx].state === SETTING ){
+				    		hashMap[idx].state = RECEIVE_SET_ANSWER;
+							break;
+				    	}
+			    	}
+			    }
+		    } 
+		    else {
 			    for(var idx in hashMap){
 			    	if(hashMap.hasOwnProperty(idx) && 
 			    		hashMap[idx].ip === remote.address && 
