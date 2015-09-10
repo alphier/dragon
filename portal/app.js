@@ -11,7 +11,7 @@ var store = new SessionStore({
   
 var app = express(); 
  
-app.set('port', process.env.PORT || 3006);
+app.set('port', process.env.PORT || 80);
 app.set('views', __dirname + '/views');
 app.engine('.html', ejs.__express);
 app.set('view engine', 'html');
