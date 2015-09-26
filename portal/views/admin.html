@@ -1,37 +1,150 @@
-
-
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head><title>
-
-</title></head>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>管理员</title>
+	<link rel="stylesheet" type="text/css" href="css/metro/easyui.css">
+	<link rel="stylesheet" type="text/css" href="css/icon.css">
+	<script type="text/javascript" src="lib/jquery.min.js"></script>
+	<script type="text/javascript" src="lib/jquery.easyui.min.js"></script>
+</head>
 <body>
-    <form name="form1" method="post" action="login.aspx" id="form1">
-<div>
-<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwULLTE3ODAzNzcxNzdkZKJZrA87S1YmRixLGyRD6vgp/+IytZPXnbY4bJ0wVUd8" />
-</div>
-
-<div>
-
-	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEWBAKZ7qbGCAK/tf22BwLsi9PkCQLh75WwCR65UMqR1iebLJC2OYOuwwDWbl+UEVYWvKHVl9L/hLtd" />
-</div>
-    <div>
-    <div>
-    
-      
-     
-        <span id="Label_username">用户名称：</span>
-        <input name="TextBox_username" type="text" id="TextBox_username" style="width:90px;" />
-&nbsp;
-        <span id="Label_password">密码：</span>
-        <input name="TextBox_password" type="password" id="TextBox_password" style="width:82px;" />
-        &nbsp;&nbsp; <input type="submit" name="Button_longin" value="登录" id="Button_longin" style="height:30px;width:72px;" />
-        <span id="Label_hint" style="color:Red;"></span>
-    
- 
-    </div>
-    </div>
-    </form>
+	<div style="width:100%;padding:5px;font-size:16px;">
+		你好！<%= user.username %>
+		<a id="quit" class="btn" href="/logout" style="font-size:16px">退出</a>
+	</div>
+	<div class="easyui-panel" title="设备" style="padding:5px;">
+		<style>.panel-title{font-size:16px}</style>
+		<button id="add" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
+			<span style="font-size:16px;">添加用户</span>
+		</button>
+		<button id="modify" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
+			<span style="font-size:16px;">修改密码</span>
+		</button>
+		<label style="font-size:16px;">用户名：</label>
+		<input class="easyui-textbox" type="text" id="username" name="username" style="width:100px;font-size:16px;">
+		<label style="font-size:16px;">密码：</label>
+		<input class="easyui-textbox" type="text" id="password" name="password" style="width:100px;font-size:16px;">
+		<label style="font-size:16px;">设备编号：</label>
+		<input class="easyui-numberbox" type="text" id="deviceid" name="deviceid" style="width:100px;font-size:16px;">
+		<label style="font-size:16px;">(1 ~ 65535)</label>
+		<label id="addResult" style="font-size:16px;color:red;"></label>	
+		<div style="margin:5px 0;"></div>	
+		<table id="dg" class="easyui-datagrid" style="width:800px;"	data-options="
+			singleSelect:true,
+			url:'users_datagrid.json'
+			,method:'get'">
+			<style>
+			  .datagrid-cell{
+				font-size:16px;
+			  }
+			</style>
+			<thead>
+				<tr>
+					<th data-options="field:'username',width:100">用户名称</th>
+					<th data-options="field:'password',width:100">密码</th>
+					<th data-options="field:'deviceId',width:100">设备编号</th>
+					<th data-options="field:'state',width:100">在线状态</th>
+					<th data-options="field:'timestamp',width:200">上次在线时间</th>
+					<th data-options="field:'_operate',width:100,align:'center',formatter:formatOper">操作</th>
+				</tr>
+			</thead>
+		</table>
+		<label id="delResult" style="font-size:16px;"><label>
+	</div>
 </body>
+<script type="text/javascript">
+	$("#add").click(function() {
+		if($('#username').textbox('getText') === ''){
+			$("#addResult").html("用户名称不能为空！");
+			return;
+		}
+		if($('#password').textbox('getText') === ''){
+			$("#addResult").html("用户密码不能为空！");
+			return;
+		}
+		if($('#deviceid').textbox('getText') === ''){
+			$("#addResult").html("设备编号不能为空！");
+			return;
+		}
+		var intDevId = parseInt($('#deviceid').textbox('getText'));
+		if(intDevId < 1 || intDevId > 65535){
+			$("#addResult").html("设备编号超出取值范围，请重新输入！");
+			return;
+		}
+		$("#addResult").html("");
+		$.post('addUser',{username: $('#username').textbox('getText'), 
+						password: $('#password').textbox('getText'), 
+						deviceid:$('#deviceid').textbox('getText')},
+		function(data, status){
+			if (data === 'success'){
+				$("#addResult").html("");
+				$('#dg').datagrid('reload');
+			} else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#addResult").html(data);
+			}
+		});		
+	});
+	$("#modify").click(function() {		
+		if($('#username').textbox('getText') === ''){
+			$("#addResult").html("用户名称不能为空！");
+			return;
+		}
+		if($('#password').textbox('getText') === ''){
+			$("#addResult").html("用户密码不能为空！");
+			return;
+		}
+		if($('#password')[0].data && $('#password').textbox('getText') === $('#password')[0].data){
+			$("#addResult").html("密码未更改！");
+			return;
+		}
+		$("#addResult").html("");
+		$.post('modifyUser',{username: $('#username').textbox('getText'), password: $('#password').textbox('getText')},function(data, status){
+			if (data === 'success'){
+				$("#addResult").html("修改密码成功！");
+				$('#dg').datagrid('reload');
+			} else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#addResult").html(data);
+			}
+		});		
+	});
+	function formatOper(val,row,index){  
+		$('#dg').datagrid('selectRow',index);
+		return '<a href="#" style="font-size:16px;" onclick="deleteUser('+index+')">删除</a>';
+	}
+	function deleteUser(index){  
+		$('#dg').datagrid('selectRow',index);
+		var row = $('#dg').datagrid('getSelected');		
+		$.post('deleteUser',{name: row.username},function(data, status){
+			if (data === 'success'){
+				$("#result").css({"color":"black"});
+				$('#dg').datagrid('reload');
+			}else if(data === 'session expired'){
+				window.location = "/";
+			}
+			else {
+				$("#delResult").css({"color":"red"});
+				$("#delResult").html("删除失败！");
+			}
+		});			
+	} 	
+	$('#dg').datagrid({
+	onClickRow: function(index,row){
+		var row = $('#dg').datagrid('getSelected');
+		if(!row) return;
+		$('#username').textbox('setText', row.username);
+		$('#username')[0].data = row.username;
+		$('#password').textbox('setText', row.password);
+		$('#password')[0].data = row.password;			
+		$('#deviceid').textbox('setText', row.deviceId);
+		$('#deviceid')[0].data = row.deviceId;
+	}
+});
+</script>
 </html>

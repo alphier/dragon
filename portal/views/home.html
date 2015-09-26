@@ -9,7 +9,7 @@
 	<script type="text/javascript" src="lib/jquery.easyui.min.js"></script>
 </head>
 <body>	
-	<div style="width:100%;padding:5px;font-size:16px;">
+	<div style="width:100%;height:100%;padding:5px;font-size:16px;">
 	你好！<%= user.username %>
 		<a id="quit" class="btn" href="/logout" style="font-size:16px">退出</a>
 		<a id="mdpwd" class="btn" href="#" style="font-size:16px">修改密码</a>
@@ -44,7 +44,7 @@
 								singleSelect:true,
 								pagination:true,
 								pageSize:10,
-								url:'userid_datagrid.json'
+								url:'devices_datagrid.json'
 								,method:'get'">
 								<style>
 								  .datagrid-cell{
@@ -130,16 +130,16 @@
 		$('#w').window('open');
 	});
 	$("#modify").click(function(){
-		if($('#oldpwd').val() === ''){
+		if($('#oldpwd').textbox('getText') === ''){
 			$("#mdresult").html("旧密码不能为空！");
 			return;
 		}
-		if($('#newpwd').val() === ''){
+		if($('#newpwd').textbox('getText') === ''){
 			$("#mdresult").html("新密码不能为空！");
 			return;
 		}
 		//===============================>添加代码
-		$.post('modifyPwd',{oldpwd:$('#oldpwd').val(),newpwd:$('#newpwd').val()}, function(data, status){
+		$.post('modifyPwd',{oldpwd:$('#oldpwd').textbox('getText'),newpwd:$('#newpwd').textbox('getText')}, function(data, status){
 			if (data === 'success'){
 				$('#w').window('close');
 			}
@@ -152,25 +152,25 @@
 		});
 	});
 	$("#add").click(function() {
-		if($('#username').val() === ''){
+		if($('#username').textbox('getText') === ''){
 			$("#addResult").html("用户ID不能为空！");
 			return;
 		}
-		var intUserId = parseInt($('#username').val());
+		var intUserId = parseInt($('#username').textbox('getText'));
 		if(intUserId < 1 || intUserId > 65535){
 			$("#addResult").html("用户ID超出取值范围，请重新输入！");
 			return;
 		}
-		if($('#channel').val() === ''){
+		if($('#channel').textbox('getText') === ''){
 			$("#addResult").html("频道号不能为空！");
 			return;
 		}
-		var intChannel = parseInt($('#channel').val());
+		var intChannel = parseInt($('#channel').textbox('getText'));
 		if(intChannel < 1 || intChannel > 20){
 			$("#addResult").html("频道号超出取值范围，请重新输入！");
 			return;
 		}
-		$.post('addUser',{username: $('#username').val(), channel: $('#channel').val()},function(data, status){
+		$.post('addDevice',{username: $('#username').textbox('getText'), channel: $('#channel').textbox('getText')},function(data, status){
 			if (data === 'success'){
 				$("#addResult").html("");
 				$('#dg').datagrid('reload');
@@ -190,12 +190,12 @@
 			$("#result").html("请选中一行");
 			return;
 		}
-		if($('#content').val() === ''){
+		if($('#content').textbox('getText') === ''){
 			$("#result").css({"color":"red"});
 			$("#result").html("发送内容不能为空！");
 			return;
 		}
-		$.post('sendMessage',{userid:row.userid, channel:row.channel, message: $('#content').val()}, function(data, status){
+		$.post('sendMessage',{userid:row.userid, channel:row.channel, message: $('#content').textbox('getText')}, function(data, status){
 			if (data === 'success'){
 				$("#result").css({"color":"black"});
 				$("#result").html("发送成功！");
@@ -284,12 +284,12 @@
 	}
 	function formatOper(val,row,index){  
 		$('#dg').datagrid('selectRow',index);
-		return '<a href="#" style="font-size:16px;" onclick="deleteUser('+index+')">删除</a>';
+		return '<a href="#" style="font-size:16px;" onclick="deleteDevice('+index+')">删除</a>';
 	}
-	function deleteUser(index){  
+	function deleteDevice(index){
 		$('#dg').datagrid('selectRow',index);
 		var row = $('#dg').datagrid('getSelected');		
-		$.post('deleteUser',{id: row._id},function(data, status){
+		$.post('deleteDevice',{id: row._id},function(data, status){
 			if (data === 'success'){
 				$("#result").css({"color":"black"});
 				$('#dg').datagrid('reload');

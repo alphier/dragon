@@ -20,13 +20,29 @@ exports.authenticate = function (name, pwd, callback){
     });
 };
 
-exports.getAllUsers = function (name, callback) {
+exports.getAllUsers = function (callback) {
 	"use strict";
 	
-	var res = db.users.find();
-	res.toArray(function (err, users) {
+	db.users.find({level: 'normal'}).toArray(function (err, users) {
         callback(users);
     });
+};
+
+exports.getUsersCount = function (callback) {
+	"use strict";
+	
+	db.users.find({}).count(function (err, count){
+		callback(count);
+	});
+	
+};
+
+exports.getUsersByPage = function (page, rows, callback) {
+	"use strict";	
+	
+	db.users.find({}).limit(page*rows).skip((page-1)*rows).toArray(function (err, users){
+		callback(users);
+	});	
 };
 
 exports.getUserById = function (id, callback) {
@@ -52,14 +68,13 @@ exports.authticateDevice = function (devId, callback) {
 
 exports.addUser = function (user, callback) {
     "use strict";
-
-    db.users.findOne({username: user.username}, function (err, user) {
-    	if (user !== undefined && user !== null){
-    		callback('Repeated user');    		
+    db.users.findOne({username: user.username}, function (err, u) {
+    	if (u !== undefined && u !== null){
+    		callback('Repeated user');
     	}
     	else {
-    		db.users.findOne({deviceId: user.deviceId}, function (err, user) {
-    	    	if (user !== undefined && user !== null){
+    		db.users.findOne({deviceId: user.deviceId}, function (err, s) {
+    	    	if (s !== undefined && s !== null){
     	    		callback('Repeated device');
     	    	}
     	    	else {
@@ -79,10 +94,19 @@ exports.updateUserPass = function (id, val) {
     db.users.update({_id: new BSON.ObjectID(id)}, {$set:{password:val}});
 };
 
-exports.updateUserStatus = function (uid, status){
+exports.updateUserPassByName = function (name, val) {
+    "use strict";
+
+    db.users.update({username: name}, {$set:{password:val}});
+};
+
+exports.updateUserStatus = function (uid, status, ts){
 	"use strict";
 	
-	db.users.update({deviceId: uid}, {$set:{connected:status}});
+	if(ts)
+		db.users.update({deviceId: uid}, {$set:{state:status, timestamp:ts}});
+	else
+		db.users.update({deviceId: uid}, {$set:{state:status}});
 };
 
 exports.updateUserMsg = function (uid, msg){

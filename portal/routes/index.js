@@ -23,27 +23,27 @@ var logger = log4js.getLogger('server');
 
 var udpServer = new server.communicate({logger: logger});
 udpServer.addEventListener("channel-connect", function (data, id){
-	var device = udpServer.getDeviceInfo(id);
+	var device = udpServer.getDeviceInfo(id),
+		datetime = moment().format("YYYY-MM-DD HH:mm:ss");
+	db.updateUserStatus(id, '在线', datetime);
 	logger.info("device " + id + " connected! Device is " + JSON.stringify(device));
-	//db.updateUserStatus(id, true);
 });
 
 udpServer.addEventListener("channel-disconnect", function (data, id){
 	var device = udpServer.getDeviceInfo(id);
+	db.updateUserStatus(id, '不在线');
 	logger.info("device " + id + " disconnect! Device is " + JSON.stringify(device));
-	//db.updateUserStatus(id, false);
 });
 
 udpServer.addEventListener("channel-heartbeat", function (data, id){
-	var device = udpServer.getDeviceInfo(id);
-	//logger.info("device " + id + " heartbeat! Device is " + JSON.stringify(device));
-	//db.updateUserStatus(id, true);
+	var datetime = moment().format("YYYY-MM-DD HH:mm:ss");
+	db.updateUserStatus(id, '在线', datetime);
+	logger.info("device " + id + " heartbeat! Device is " + id);
 });
 
 udpServer.addEventListener("channel-receive", function (data, id){
 	var device = udpServer.getDeviceInfo(id);
 	logger.info("device " + id + " receive [" + data + "]! Device is " + JSON.stringify(device));
-	//db.updateUserStatus(id, true);
 });
 
 udpServer.start();
@@ -108,7 +108,59 @@ exports.doModifyPwd = function (req, res){
 	
 };
 
+exports.doModifyPwd1 = function (req, res){
+	"use strict";
+	
+	if(!req.session.user){
+		res.send('session expired');
+		return;
+	}
+	
+	var name = req.body.username,
+		pwd = req.body.password;
+	
+	logger.info('doModifyPwd...name:' + name);
+	db.getUser(name, function(user){
+		if(user !== undefined && user !== null){
+			db.updateUserPassByName(name, pwd);
+			res.send('success');
+		}
+		else {
+			res.send('未找到该用户');
+		}
+	});
+	
+};
+
 exports.doAddUser = function (req, res){
+	"use strict";	
+
+	if(!req.session.user){
+		res.send('session expired');
+		return;
+	}
+	
+	var name = req.body.username,
+		password = req.body.password,
+		deviceid = req.body.deviceid;
+		
+	logger.info('doAddUser...user name:' + name);
+	var user = {username: name, password: password, deviceId: deviceid, state:'不在线', level: 'normal'};
+	db.addUser(user, function (saved){
+		if (saved === 'Repeated user'){
+			res.send('用户名重复，请重新输入');
+		} 
+		else if(saved === 'Repeated device'){
+			res.send('设备编号重复，请重新输入');
+		} 
+		else {
+			res.send('success');
+		}
+		
+	});
+};
+
+exports.doAddDevice = function (req, res){
 	"use strict";	
 
 	if(!req.session.user){
@@ -120,8 +172,8 @@ exports.doAddUser = function (req, res){
 		channel = req.body.channel;	
 		
 	logger.info('doAddUser...user name:' + name + ' channel:' + channel);
-	var user = {relateid: req.session.user._id.toString(), userid: name, channel: channel};
-	db.addDevice(user, function (saved){
+	var dev = {relateid: req.session.user._id.toString(), userid: name, channel: channel};
+	db.addDevice(dev, function (saved){
 		if (saved === 'Repeated'){
 			res.send('用户ID重复，请重新输入');
 		}
@@ -302,7 +354,7 @@ exports.doSend = function (req, res){
 	
 };
 
-exports.doDeleteUser = function (req, res) {
+exports.doDeleteDevice = function (req, res) {
 	"use strict";
 	
 	if(!req.session.user){
@@ -311,14 +363,44 @@ exports.doDeleteUser = function (req, res) {
 	}
 	
 	var id = req.body.id;
-	logger.info('doDeleteUser...use id:' + id);
+	logger.info('doDeleteDevice...use id:' + id);
 	db.removeDevice(id, function (data){
 		res.send(data);
 	});
 	
 };
 
-exports.getUserIds = function (req, res){
+exports.doDeleteUser = function (req, res) {
+	"use strict";
+	
+	if(!req.session.user){
+		res.send('session expired');
+		return;
+	}
+	
+	var name = req.body.name;
+	logger.info('doDeleteUser...name:' + name);
+	db.removeUserByName(name, function (data){
+		res.send(data);
+	});
+	
+};
+
+exports.getUsers = function (req, res){
+	"use strict";
+	
+	if(!req.session.user){
+		res.send('session expired');
+		return;
+	}
+	
+	logger.info('getUsers...');
+	db.getAllUsers(function (users){
+		res.send({total:users.length, rows:users});
+	});	
+};
+
+exports.getDevices = function (req, res){
 	"use strict";
 	
 	if(!req.session.user){
@@ -330,7 +412,7 @@ exports.getUserIds = function (req, res){
 		page = req.query.page,
 		rows = req.query.rows;
 	
-	logger.info('getUserIds...page:' + page + ' rows:' + rows);
+	logger.info('getDevices...page:' + page + ' rows:' + rows);
 	db.getDevicesCount(_id, function (count){
 		db.getDevicesByPage(_id, page, rows, function (users){			
 			res.send({total:count, rows:users});

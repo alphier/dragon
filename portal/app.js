@@ -43,13 +43,19 @@ app.get('/', routes.login);
 app.post('/', routes.doLogin);
 
 app.post('/addUser', routes.doAddUser);
+app.post('/modifyUser', routes.doModifyPwd1);
 app.post('/deleteUser', routes.doDeleteUser);
+app.post('/addDevice', routes.doAddDevice);
+app.post('/deleteDevice', routes.doDeleteDevice);
 app.post('/clearHistory', routes.doClearHistory);
+
 app.post('/sendMessage', routes.doSend);
 app.post('/modifyPwd', routes.doModifyPwd);
 app.post('/remoteDelete', routes.doRemoteDel);
 app.post('/setID', routes.doSetID);
-app.get('/userid_datagrid.json', routes.getUserIds);
+
+app.get('/users_datagrid.json', routes.getUsers);
+app.get('/devices_datagrid.json', routes.getDevices);
 app.get('/history_datagrid.json', routes.getHistory);
 
 app.get('/logout', authentication);
