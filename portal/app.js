@@ -22,11 +22,12 @@ app.use(express.methodOverride());
 app.use(express.session({
   	secret : 'blog.fens.me',
     store: store,
-    cookie: { maxAge: 60 * 60 * 1000 } // expire session in 15 min or 900 seconds
+    cookie: { maxAge: 24*60*60*1000 } // expire session in 15 min or 900 seconds
 }));
 
 app.use(function(req, res, next){
-	res.locals.user = req.session.user;
+	if(req.session.user)
+		res.locals.user = req.session.user;
 	var err = req.session.error;
 	delete req.session.error;
 	res.locals.message = '';
@@ -47,6 +48,7 @@ app.post('/clearHistory', routes.doClearHistory);
 app.post('/sendMessage', routes.doSend);
 app.post('/modifyPwd', routes.doModifyPwd);
 app.post('/remoteDelete', routes.doRemoteDel);
+app.post('/setID', routes.doSetID);
 app.get('/userid_datagrid.json', routes.getUserIds);
 app.get('/history_datagrid.json', routes.getHistory);
 

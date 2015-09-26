@@ -1,7 +1,8 @@
 var db = require('../lib/dataBase'),
 	moment = require('moment'),
 	server = require('../lib/communicate'),
-	log4js = require('log4js');
+	log4js = require('log4js'),
+	MAX_LENGTH = 80;
 
 log4js.configure({
     appenders: [
@@ -35,7 +36,7 @@ udpServer.addEventListener("channel-disconnect", function (data, id){
 
 udpServer.addEventListener("channel-heartbeat", function (data, id){
 	var device = udpServer.getDeviceInfo(id);
-	logger.info("device " + id + " heartbeat! Device is " + JSON.stringify(device));
+	//logger.info("device " + id + " heartbeat! Device is " + JSON.stringify(device));
 	//db.updateUserStatus(id, true);
 });
 
@@ -131,6 +132,42 @@ exports.doAddUser = function (req, res){
 	});
 };
 
+exports.doSetID = function (req, res) {
+    "use strict";
+
+    if(!req.session.user){
+        res.send('session expired');
+        return; 
+    }   
+
+    var uid = req.body.userid,
+    ch = req.body.channel,
+    accid = req.session.user._id.toString();
+
+    db.getDeviceByUserId(accid, uid, function(device){
+        if(device !== undefined && device !== null){
+            udpServer.setId(req.session.user.deviceId, uid, ch, function (err, bytes){
+                if(bytes > 0){  
+                    if(err == 'answer'){
+						logger.info('setID success');
+                        res.send('success');    
+                    }                   
+                    else                
+                        res.send('设置失败');   
+                }               
+                else {          
+                    logger.info('doSetID failed, caused by [' + err + ']');
+                    res.send(err);      
+                }               
+            });         
+        } else {
+            logger.info('doSetID failed, caused by [' + uid + ':' + ch + '] not found!');
+            res.send("设备 [" + uid + ":" + ch + "] 未找到，请重新添加！");
+        }       
+    }); 
+    logger.info('doSetID...use id:' + uid);
+};
+
 exports.doRemoteDel = function (req, res) {
 	"use strict";
 	
@@ -148,7 +185,7 @@ exports.doRemoteDel = function (req, res) {
 			udpServer.remoteDel(req.session.user.deviceId, uid, ch, function (err, bytes){
 				if(bytes > 0){
 					if(err == 'answer'){
-						answer = "Y";
+						logger.info('remoteDel success');
 						res.send('success');
 					}
 					else
@@ -165,6 +202,56 @@ exports.doRemoteDel = function (req, res) {
 		}
 	});	
 	logger.info('doRemoteDel...use id:' + uid);
+};
+
+function splitMsg(msg, max){
+    var iconv = require('iconv-lite'),
+        len = 0,
+        n = 0,
+        msgArr = [];
+    for(var i=0;i<msg.length;i++){
+        var buf = iconv.encode(msg[i], 'GBK');
+		len += buf.length;
+        if(len >= max){
+			var sub = '';
+			if(len > max){
+				sub = msg.substring(n, i);
+				n = i;
+				len = 2;
+			}
+			else{
+				sub = msg.substring(n, i+1);				
+				n = i+1;
+				len = 0;
+			}
+            msgArr.push(sub);
+        }        
+    }
+	if(n < msg.length)	
+		msgArr.push(msg.substring(n,msg.length));
+	logger.info('Message split to ', msgArr);
+	return msgArr;
+};
+
+function send(devId, uId, chId, msgarr, callback){
+	var msg = msgarr[0];
+	if(!msg) {
+		logger.info('send over!!!');
+		callback('success');
+		return;
+	}
+	logger.info('send ', msg);
+	udpServer.send(devId, uId, chId, 0, msg, function (err, bytes){
+		if(err === 'answer'){
+			logger.info('send succeed!!!');
+			msgarr.splice(0,1);
+			send(devId, uId, chId, msgarr, callback);
+		}else {
+			logger.error('send failed...', err);
+			callback(err);
+			return;
+		}
+	});
 };
 
 exports.doSend = function (req, res){
@@ -184,30 +271,28 @@ exports.doSend = function (req, res){
 	logger.info('doSend...userid:' + uid + ' channel:' + ch + ' message:' + msg);
 	db.getDeviceByUserId(accid, uid, function(device){
 		if(device !== undefined && device !== null){
-			udpServer.send(req.session.user.deviceId, uid, ch, 0, msg, function (err, bytes){
-				if(bytes > 0){
-					var answer = "N";
-					if(err == 'answer'){
-						answer = "Y";
-					}
-					db.getHistoryNumber(accid, function (num){
-						db.addToHistory({accoutid: accid, 	// user表_id
-										userid: uid,		// device表userid
-										channel: ch,		// device表channel
-										index: num+1, 		// 编号
-										time: datetime, 	// 发送时间戳
-										answer: answer, 	// 设备是否有应答
-										message: msg},		// 发送数据
-										function (saved){
-											logger.info('doSend success');
+			var msgArray = splitMsg(msg, MAX_LENGTH);
+			send(req.session.user.deviceId, uid, ch, msgArray, function(result){
+				var answer = "N";
+				if(result === 'success'){
+					answer = "Y";
+				}
+				db.getHistoryNumber(accid, function (num){
+					db.addToHistory({accoutid: accid, 	// user表_id
+									userid: uid,		// device表userid
+									channel: ch,		// device表channel
+									index: num+1, 		// 编号
+									time: datetime, 	// 发送时间戳
+									answer: answer, 	// 设备是否有应答
+									message: msg},		// 发送数据
+									function (saved){
+										if(result === 'success')
 											res.send('success');
-										});	
-					});
-				}
-				else {
-					logger.info('doSend failed, caused by [' + err + ']');
-					res.send(err);
-				}
+										else{
+											res.send(result);
+										}
+									});	
+				});				
 			});
 		} else {
 			logger.info('doSend failed, caused by [' + uid + ':' + ch + '] not found!');

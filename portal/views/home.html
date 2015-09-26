@@ -183,7 +183,8 @@
 		});		
 	});
 	$("#send").click(function() {
-		var row = $('#dg').datagrid('getSelected');	
+		var row = $('#dg').datagrid('getSelected');
+		$("#result").html("");
 		if (!row){
 			$("#result").css({"color":"red"});
 			$("#result").html("请选中一行");
@@ -218,6 +219,27 @@
 			}
 		});
 	});
+	$("#setID").click(function() {
+                var row = $('#dg').datagrid('getSelected');
+                $("#delResult").html("");
+                if (!row){
+                        $("#delResult").css({"color":"red"});
+                        $("#delResult").html("请选中一行");
+                        return;
+                }
+                $.post('setID', {userid:row.userid, channel:row.channel}, function(data, status){
+                        if (data === 'success'){
+                                $("#delResult").css({"color":"black"});
+                                $("#delResult").html("设置成功");
+                        } else if(data === 'session expired'){
+                                window.location = "/";
+                        }
+                        else {
+                                $("#delResult").css({"color":"red"});
+                                $("#delResult").html(data);
+                        }
+                });
+        });
 	$("#remoteDel").click(function() {
 		var row = $('#dg').datagrid('getSelected');	
 		$("#delResult").html("");
