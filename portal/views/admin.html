@@ -7,6 +7,7 @@
 	<link rel="stylesheet" type="text/css" href="css/icon.css">
 	<script type="text/javascript" src="lib/jquery.min.js"></script>
 	<script type="text/javascript" src="lib/jquery.easyui.min.js"></script>
+	<script type="text/javascript" src="main.js"></script>
 </head>
 <body>
 	<div style="width:100%;padding:5px;font-size:16px;">
@@ -15,10 +16,10 @@
 	</div>
 	<div class="easyui-panel" title="设备" style="padding:5px;">
 		<style>.panel-title{font-size:16px}</style>
-		<button id="add" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
+		<button id="adduser" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
 			<span style="font-size:16px;">添加用户</span>
 		</button>
-		<button id="modify" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
+		<button id="modifypwd" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
 			<span style="font-size:16px;">修改密码</span>
 		</button>
 		<label style="font-size:16px;">用户名：</label>
@@ -46,7 +47,7 @@
 					<th data-options="field:'deviceId',width:100">设备编号</th>
 					<th data-options="field:'state',width:100">在线状态</th>
 					<th data-options="field:'timestamp',width:200">上次在线时间</th>
-					<th data-options="field:'_operate',width:100,align:'center',formatter:formatOper">操作</th>
+					<th data-options="field:'_operate',width:100,align:'center',formatter:operation">操作</th>
 				</tr>
 			</thead>
 		</table>
@@ -54,96 +55,15 @@
 	</div>
 </body>
 <script type="text/javascript">
-	$("#add").click(function() {
-		if($('#username').textbox('getText') === ''){
-			$("#addResult").html("用户名称不能为空！");
-			return;
-		}
-		if($('#password').textbox('getText') === ''){
-			$("#addResult").html("用户密码不能为空！");
-			return;
-		}
-		if($('#deviceid').textbox('getText') === ''){
-			$("#addResult").html("设备编号不能为空！");
-			return;
-		}
-		var intDevId = parseInt($('#deviceid').textbox('getText'));
-		if(intDevId < 1 || intDevId > 65535){
-			$("#addResult").html("设备编号超出取值范围，请重新输入！");
-			return;
-		}
-		$("#addResult").html("");
-		$.post('addUser',{username: $('#username').textbox('getText'), 
-						password: $('#password').textbox('getText'), 
-						deviceid:$('#deviceid').textbox('getText')},
-		function(data, status){
-			if (data === 'success'){
-				$("#addResult").html("");
-				$('#dg').datagrid('reload');
-			} else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#addResult").html(data);
-			}
-		});		
-	});
-	$("#modify").click(function() {		
-		if($('#username').textbox('getText') === ''){
-			$("#addResult").html("用户名称不能为空！");
-			return;
-		}
-		if($('#password').textbox('getText') === ''){
-			$("#addResult").html("用户密码不能为空！");
-			return;
-		}
-		if($('#password')[0].data && $('#password').textbox('getText') === $('#password')[0].data){
-			$("#addResult").html("密码未更改！");
-			return;
-		}
-		$("#addResult").html("");
-		$.post('modifyUser',{username: $('#username').textbox('getText'), password: $('#password').textbox('getText')},function(data, status){
-			if (data === 'success'){
-				$("#addResult").html("修改密码成功！");
-				$('#dg').datagrid('reload');
-			} else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#addResult").html(data);
-			}
-		});		
-	});
-	function formatOper(val,row,index){  
-		$('#dg').datagrid('selectRow',index);
-		return '<a href="#" style="font-size:16px;" onclick="deleteUser('+index+')">删除</a>';
-	}
-	function deleteUser(index){  
-		$('#dg').datagrid('selectRow',index);
-		var row = $('#dg').datagrid('getSelected');		
-		$.post('deleteUser',{name: row.username},function(data, status){
-			if (data === 'success'){
-				$("#result").css({"color":"black"});
-				$('#dg').datagrid('reload');
-			}else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#delResult").css({"color":"red"});
-				$("#delResult").html("删除失败！");
-			}
-		});			
-	} 	
-	$('#dg').datagrid({
+$("#adduser").click(function() {
+	addUser();
+});	
+$("#modifypwd").click(function() {
+	modifyPwd();
+});
+$('#dg').datagrid({
 	onClickRow: function(index,row){
-		var row = $('#dg').datagrid('getSelected');
-		if(!row) return;
-		$('#username').textbox('setText', row.username);
-		$('#username')[0].data = row.username;
-		$('#password').textbox('setText', row.password);
-		$('#password')[0].data = row.password;			
-		$('#deviceid').textbox('setText', row.deviceId);
-		$('#deviceid')[0].data = row.deviceId;
+		clickRow(index,row);		
 	}
 });
 </script>

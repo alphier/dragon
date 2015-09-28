@@ -7,6 +7,7 @@
 	<link rel="stylesheet" type="text/css" href="css/icon.css">
 	<script type="text/javascript" src="lib/jquery.min.js"></script>
 	<script type="text/javascript" src="lib/jquery.easyui.min.js"></script>
+	<script type="text/javascript" src="main.js"></script>
 </head>
 <body>	
 	<div style="width:100%;height:100%;padding:5px;font-size:16px;">
@@ -122,185 +123,27 @@
 		</div>
 	</div>
 </body>
-<script type="text/javascript">
-	$("#mdpwd").click(function(){
-		$('#oldpwd').attr("value","");
-		$('#newpwd').attr("value","");
-		$('#mdresult').html('');
-		$('#w').window('open');
-	});
-	$("#modify").click(function(){
-		if($('#oldpwd').textbox('getText') === ''){
-			$("#mdresult").html("旧密码不能为空！");
-			return;
-		}
-		if($('#newpwd').textbox('getText') === ''){
-			$("#mdresult").html("新密码不能为空！");
-			return;
-		}
-		//===============================>添加代码
-		$.post('modifyPwd',{oldpwd:$('#oldpwd').textbox('getText'),newpwd:$('#newpwd').textbox('getText')}, function(data, status){
-			if (data === 'success'){
-				$('#w').window('close');
-			}
-			else if (data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#mdresult").html(data);
-			}
-		});
-	});
-	$("#add").click(function() {
-		if($('#username').textbox('getText') === ''){
-			$("#addResult").html("用户ID不能为空！");
-			return;
-		}
-		var intUserId = parseInt($('#username').textbox('getText'));
-		if(intUserId < 1 || intUserId > 65535){
-			$("#addResult").html("用户ID超出取值范围，请重新输入！");
-			return;
-		}
-		if($('#channel').textbox('getText') === ''){
-			$("#addResult").html("频道号不能为空！");
-			return;
-		}
-		var intChannel = parseInt($('#channel').textbox('getText'));
-		if(intChannel < 1 || intChannel > 20){
-			$("#addResult").html("频道号超出取值范围，请重新输入！");
-			return;
-		}
-		$.post('addDevice',{username: $('#username').textbox('getText'), channel: $('#channel').textbox('getText')},function(data, status){
-			if (data === 'success'){
-				$("#addResult").html("");
-				$('#dg').datagrid('reload');
-			} else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#addResult").html(data);
-			}
-		});		
-	});
-	$("#send").click(function() {
-		var row = $('#dg').datagrid('getSelected');
-		$("#result").html("");
-		if (!row){
-			$("#result").css({"color":"red"});
-			$("#result").html("请选中一行");
-			return;
-		}
-		if($('#content').textbox('getText') === ''){
-			$("#result").css({"color":"red"});
-			$("#result").html("发送内容不能为空！");
-			return;
-		}
-		$.post('sendMessage',{userid:row.userid, channel:row.channel, message: $('#content').textbox('getText')}, function(data, status){
-			if (data === 'success'){
-				$("#result").css({"color":"black"});
-				$("#result").html("发送成功！");
-				$('#hisdg').datagrid('reload');
-			} else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#result").css({"color":"red"});
-				$("#result").html(data);				
-			}
-		});
-	});
-	$("#clear").click(function() {
-		$.post('clearHistory', {}, function(data, status){
-			if (data === 'success'){
-				$('#hisdg').datagrid('reload');
-			}
-			if(data === 'session expired'){
-				window.location = "/";
-			}
-		});
-	});
-	$("#setID").click(function() {
-                var row = $('#dg').datagrid('getSelected');
-                $("#delResult").html("");
-                if (!row){
-                        $("#delResult").css({"color":"red"});
-                        $("#delResult").html("请选中一行");
-                        return;
-                }
-                $.post('setID', {userid:row.userid, channel:row.channel}, function(data, status){
-                        if (data === 'success'){
-                                $("#delResult").css({"color":"black"});
-                                $("#delResult").html("设置成功");
-                        } else if(data === 'session expired'){
-                                window.location = "/";
-                        }
-                        else {
-                                $("#delResult").css({"color":"red"});
-                                $("#delResult").html(data);
-                        }
-                });
-        });
-	$("#remoteDel").click(function() {
-		var row = $('#dg').datagrid('getSelected');	
-		$("#delResult").html("");
-		if (!row){
-			$("#delResult").css({"color":"red"});
-			$("#delResult").html("请选中一行");
-			return;
-		}
-		$.post('remoteDelete', {userid:row.userid, channel:row.channel}, function(data, status){
-			if (data === 'success'){
-				$("#delResult").css({"color":"black"});
-				$("#delResult").html("删除成功");
-			} else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#delResult").css({"color":"red"});
-				$("#delResult").html(data);
-			}
-		});
-	});
-	function formatRetrans(val,row,index){
-		$('#hisdg').datagrid('selectRow',index);
-		return '<a href="#" style="font-size:16px;" onclick="retransmit('+index+')">重发</a>';
-	}
-	function retransmit(index){
-		$('#hisdg').datagrid('selectRow',index);
-		var row = $('#hisdg').datagrid('getSelected');
-		$.post('sendMessage',{userid:row.userid, channel:row.channel, message: row.message},function(data, status){
-			if (data === 'success'){
-				$("#retransResult").css({"color":"black"});
-				$("#retransResult").html("发送成功！");
-				$('#hisdg').datagrid('reload');
-			} else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#retransResult").css({"color":"red"});
-				$("#retransResult").html(data);
-			}
-		});
-	}
-	function formatOper(val,row,index){  
-		$('#dg').datagrid('selectRow',index);
-		return '<a href="#" style="font-size:16px;" onclick="deleteDevice('+index+')">删除</a>';
-	}
-	function deleteDevice(index){
-		$('#dg').datagrid('selectRow',index);
-		var row = $('#dg').datagrid('getSelected');		
-		$.post('deleteDevice',{id: row._id},function(data, status){
-			if (data === 'success'){
-				$("#result").css({"color":"black"});
-				$('#dg').datagrid('reload');
-			}else if(data === 'session expired'){
-				window.location = "/";
-			}
-			else {
-				$("#delResult").css({"color":"red"});
-				$("#delResult").html("删除失败！");
-			}
-		});			
-	} 	
+<script type="text/javascript">	
+$("#mdpwd").click(function(){
+	modPwdClick();
+});
+$("#modify").click(function(){
+	modifyMyPwd();
+});
+$("#add").click(function() {
+	addDevice();
+});
+$("#send").click(function() {
+	sendMsg();
+});
+$("#clear").click(function() {
+	clear();
+});
+$("#setID").click(function() {
+	setID();
+});
+$("#remoteDel").click(function() {
+	remoteDel();
+});
 </script>
 </html>
