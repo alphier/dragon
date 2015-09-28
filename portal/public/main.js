@@ -1,5 +1,6 @@
 ////////////////////admin.js////////////////////
 function addUser() {
+	$("#addResult").html("");
 	if($('#username').textbox('getText') === ''){
 		$("#addResult").html("用户名称不能为空！");
 		return;
@@ -34,6 +35,7 @@ function addUser() {
 	});		
 }
 function modifyPwd() {		
+	$("#addResult").html("");
 	if($('#username').textbox('getText') === ''){
 		$("#addResult").html("用户名称不能为空！");
 		return;
@@ -75,6 +77,7 @@ function operation(val,row,index){
 	return '<a href="#" style="font-size:16px;" onclick="deleteUser('+index+')">删除</a>';
 }
 function deleteUser(index){  
+	$("#delResult").html("");
 	$('#dg').datagrid('selectRow',index);
 	var row = $('#dg').datagrid('getSelected');		
 	$.post('deleteUser',{name: row.username},function(data, status){
@@ -99,6 +102,7 @@ function modPwdClick(){
 	$('#w').window('open');
 }
 function modifyMyPwd(){
+	$("#mdresult").html("");
 	if($('#oldpwd').textbox('getText') === ''){
 		$("#mdresult").html("旧密码不能为空！");
 		return;
@@ -121,6 +125,7 @@ function modifyMyPwd(){
 	});
 }
 function addDevice() {
+	$("#addResult").html("");
 	if($('#username').textbox('getText') === ''){
 		$("#addResult").html("用户ID不能为空！");
 		return;
@@ -152,8 +157,8 @@ function addDevice() {
 	});		
 }
 function sendMsg() {
-	var row = $('#dg').datagrid('getSelected');
 	$("#result").html("");
+	var row = $('#dg').datagrid('getSelected');
 	if (!row){
 		$("#result").css({"color":"red"});
 		$("#result").html("请选中一行");
@@ -189,8 +194,8 @@ function clear() {
 	});
 }
 function setID() {
-    var row = $('#dg').datagrid('getSelected');
     $("#delResult").html("");
+    var row = $('#dg').datagrid('getSelected');
     if (!row){
             $("#delResult").css({"color":"red"});
             $("#delResult").html("请选中一行");
@@ -210,8 +215,8 @@ function setID() {
     });
 }
 function remoteDel() {
-	var row = $('#dg').datagrid('getSelected');	
 	$("#delResult").html("");
+	var row = $('#dg').datagrid('getSelected');	
 	if (!row){
 		$("#delResult").css({"color":"red"});
 		$("#delResult").html("请选中一行");
@@ -235,6 +240,7 @@ function formatRetrans(val,row,index){
 	return '<a href="#" style="font-size:16px;" onclick="retransmit('+index+')">重发</a>';
 }
 function retransmit(index){
+	$("#retransResult").html("");
 	$('#hisdg').datagrid('selectRow',index);
 	var row = $('#hisdg').datagrid('getSelected');
 	$.post('sendMessage',{userid:row.userid, channel:row.channel, message: row.message},function(data, status){
@@ -256,6 +262,7 @@ function formatOper(val,row,index){
 	return '<a href="#" style="font-size:16px;" onclick="deleteDevice('+index+')">删除</a>';
 }
 function deleteDevice(index){
+	$("#delResult").html("");
 	$('#dg').datagrid('selectRow',index);
 	var row = $('#dg').datagrid('getSelected');		
 	$.post('deleteDevice',{id: row._id},function(data, status){

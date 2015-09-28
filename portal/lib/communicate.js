@@ -4,6 +4,7 @@ exports.communicate = function (spec) {
 	var dgram = require('dgram'),
 		db = require('./dataBase'),
 		iconv = require('iconv-lite'),
+		MAX_INDEX = 255,
 		INTERVAL_TIME_KEEPALIVE = 500,
 		TIMEOUT_SENDING = 10000,
 		READY = 0,
@@ -69,11 +70,20 @@ exports.communicate = function (spec) {
 			msgbuffer.writeUInt8(0xc1, 1);					//指令，表明是数据
 			msgbuffer.writeUInt8(parseInt(ch), 2);			//频道号
 			msgbuffer.writeUInt16BE(parseInt(uid), 3);		//用户ID
-			msgbuffer.writeUInt8(len+3, 5);			//数据长度+编号+开始位+校验和
-			msgbuffer.writeUInt8(idx, 6);			//数据编号
-			msgbuffer.writeUInt8(0x00, 7);			//开始位
-			for(i=0;i<gbkbuf.length;i++){
-    			msgbuffer.writeUInt8(gbkbuf[i], 8+i);
+			var offset = 0;
+			if(idx > 0 && idx < 256){
+				msgbuffer.writeUInt8(len+3, 5);			//数据长度+编号(1字节)+开始位(1字节)+校验和(1字节)
+				msgbuffer.writeUInt8(idx, 6);			//数据编号
+				offset = 7;
+			} else {
+				msgbuffer.writeUInt8(len+4, 5);			//数据长度+编号(2字节)+开始位(1字节)+校验和(1字节)
+				msgbuffer.writeUInt16BE(idx, 6);		//数据编号
+				offset = 8;
+			}
+			msgbuffer.writeUInt8(0x00, offset);			//开始位
+			offset += 1;
+			for(var i=0;i<gbkbuf.length;i++){
+    			msgbuffer.writeUInt8(gbkbuf[i], offset+i);
 			}
 
 			var sum = 0,
@@ -84,7 +94,7 @@ exports.communicate = function (spec) {
 			}
 			var tmp = new Buffer(2);
 			tmp.writeUInt16BE(sum, 0);
-			msgbuffer.writeUInt8(tmp[1], 8+len);		//校验和
+			msgbuffer.writeUInt8(tmp[1], offset+len);		//校验和
 			
 			return msgbuffer;
 		},
@@ -97,7 +107,7 @@ exports.communicate = function (spec) {
 			setbuffer.writeUInt8(0x04, 5);					//2+1+1
 			setbuffer.writeUInt8(0xc0, 6);
 			setbuffer.writeUInt8(0x01, 7);
-			setbuffer.writeUInt8(parseInt(id), 8);			//设置id
+			setbuffer.writeUInt8(parseInt(id), 8);			//未知位，待确认
 			var sum = 0,
                 nbuf = new Buffer(setbuffer).toJSON(),
 				data = new Buffer(nbuf);
@@ -121,7 +131,7 @@ exports.communicate = function (spec) {
 			dbuf.writeUInt8(0x04, 5);					//长度：2+1+1
 			dbuf.writeUInt8(0x7a, 6);
 			dbuf.writeUInt8(0x01, 7);
-			dbuf.writeUInt8(parseInt(id), 8);			//删除id
+			dbuf.writeUInt8(parseInt(id), 8);			//未知位，待确认
 			var sum = 0,
                 nbuf = new Buffer(dbuf).toJSON(),
                 data = new Buffer(nbuf);
@@ -172,7 +182,7 @@ exports.communicate = function (spec) {
 		"use strict";
 		
 		if(hashMap.hasOwnProperty(deviceId)){
-			var buf = assembleSetInst(channel, userId);
+			var buf = assembleSetInst(channel, userId, 0);
 			server.send(buf, 0, buf.length, hashMap[deviceId].port, hashMap[deviceId].ip, 
 				function (err, bytes){
 					if(bytes > 0){
@@ -208,7 +218,7 @@ exports.communicate = function (spec) {
 		"use strict";
 		
 		if(hashMap.hasOwnProperty(deviceId)){
-			var buf = assembleDelInst(channel, userId);
+			var buf = assembleDelInst(channel, userId, 0);
 			server.send(buf, 0, buf.length, hashMap[deviceId].port, hashMap[deviceId].ip, 
 				function (err, bytes){
 					if(bytes > 0){
@@ -245,8 +255,9 @@ exports.communicate = function (spec) {
 		
 		if(hashMap.hasOwnProperty(deviceId)){			
 			hashMap[deviceId].sendIdx += 1;
-			if(hashMap[deviceId].sendIdx >= 255)
+			if(hashMap[deviceId].sendIdx > MAX_INDEX)
 				hashMap[deviceId].sendIdx = 0;
+			db.updateUserSendIndex(deviceId,hashMap[deviceId].sendIdx);
 			var buf = assembleMsgPacket(msg, channel, userId, hashMap[deviceId].sendIdx);
 			server.send(buf, 0, buf.length, hashMap[deviceId].port, hashMap[deviceId].ip, 
 				function (err, bytes){
@@ -292,15 +303,25 @@ exports.communicate = function (spec) {
 		
 		server.on('listening', function () {
 		    var address = server.address();
-		    logger.info('UDP Server listening on ' + address.address + ":" + address.port);
+		    logger.info('UDP Server listening on ' + address.address + ":" + address.port);		    
+		    //loading hashMap from database
+		    db.getAllUsers(function(users){
+		    	for(var i in users){
+		    		if(users[i].state === '在线'){
+		    			hashMap[users[i].deviceId] = {timestamp:new Date(users[i].timestamp),
+		    									ip:users[i].ip,port:users[i].port,
+		    									state:READY,sendIdx:users[i].sendIndex};
+		    		}
+		    	}
+		    });
 		});
 		
-		server.on('message', function (message, remote) {			
+		server.on('message', function (message, remote) {
 			var buf = new Buffer(message).toJSON(),
 				buffer = new Buffer(buf);
-			if(buffer[0] !== 85)
+			if(buffer[0] !== 85)	//0x55
 				logger.info('receiving message:',buffer,' ip:',remote.address,' port:',remote.port);
-			if (buffer[0] === 70 && buffer[1] === 76 && buffer.length === 2){	//04 CE
+			if (buffer[0] === 70 && buffer[1] === 76 && buffer.length === 2){	//连接指令 04 CE
 				answerDevice(remote.address, remote.port, function (err, bytes){
                 });
 			}
@@ -331,7 +352,8 @@ exports.communicate = function (spec) {
 		    			}
 		    		});
 		    	}
-		    } else if (buffer.length === 2 && buffer[1] === 0x00){ //收到发送数据应答
+		    } else if (buffer.length === 2 && 
+		    		buffer[1] === 0x00){ 	//收到发送数据应答
 		    	for(var idx in hashMap){
 			    	if(hashMap.hasOwnProperty(idx) && 
 			    		hashMap[idx].ip === remote.address && 
@@ -350,12 +372,12 @@ exports.communicate = function (spec) {
 		    } else if (buffer.length === 2 && 
 		    		buffer[0] === 0x7a && 
 		    		buffer[1] === 0x01) {//收到远程删除应答
-				logger.info('receive remoteDel answer...');
 		    	for(var idx in hashMap){
 			    	if(hashMap.hasOwnProperty(idx) && 
 			    		hashMap[idx].ip === remote.address && 
 			    		hashMap[idx].port === remote.port){
 				    	if(hashMap[idx].state === DELETING ){
+							logger.info('receive remoteDel answer...');
 				    		hashMap[idx].state = RECEIVE_DEL_ANSWER;
 							break;
 				    	}
@@ -364,23 +386,24 @@ exports.communicate = function (spec) {
 		    } else if(buffer.length === 2 && 
 		    		buffer[0] === 0xc0 && 
 		    		buffer[1] === 0x01){	//收到设置id应答
-				logger.info('receive setID answer...');
 		    	for(var idx in hashMap){
 			    	if(hashMap.hasOwnProperty(idx) && 
 			    		hashMap[idx].ip === remote.address && 
 			    		hashMap[idx].port === remote.port){
 				    	if(hashMap[idx].state === SETTING ){
+							logger.info('receive setID answer...');
 				    		hashMap[idx].state = RECEIVE_SET_ANSWER;
 							break;
 				    	}
 			    	}
 			    }
 		    } 
-		    else {
+		    else {	//未知指令，回复0xaa5b
 			    for(var idx in hashMap){
 			    	if(hashMap.hasOwnProperty(idx) && 
 			    		hashMap[idx].ip === remote.address && 
 			    		hashMap[idx].port === remote.port){
+			    		logger.info('receive unknown instruction...');
 					    var evt = new channelEvent({type:'channel-receive',data:message});
 			    		dispatchEventListener(evt,idx);			    		
 			    		answerDevice(remote.address, remote.port, function (err, bytes){

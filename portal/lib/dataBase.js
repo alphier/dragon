@@ -40,9 +40,9 @@ exports.getUsersCount = function (callback) {
 exports.getUsersByPage = function (page, rows, callback) {
 	"use strict";	
 	
-	db.users.find({level: 'normal'}).limit(page*rows).skip((page-1)*rows).toArray(function (err, users){
+	db.users.find({level: 'normal'}).skip((page-1)*rows).limit(rows).toArray(function (err, users){
 		callback(users);
-	});	
+	});
 };
 
 exports.getUserById = function (id, callback) {
@@ -100,13 +100,19 @@ exports.updateUserPassByName = function (name, val) {
     db.users.update({username: name}, {$set:{password:val}});
 };
 
-exports.updateUserStatus = function (uid, status, ts){
+exports.updateUserStatus = function (uid, status, ip, port, ts){
 	"use strict";
 	
-	if(ts)
-		db.users.update({deviceId: uid}, {$set:{state:status, timestamp:ts}});
+	if(ip && port && ts)
+		db.users.update({deviceId: uid}, {$set:{state:status, ip:ip, port:port, timestamp:ts}});
 	else
 		db.users.update({deviceId: uid}, {$set:{state:status}});
+};
+
+exports.updateUserSendIndex = function (uid, idx){
+	"use strict";
+		
+	db.users.update({deviceId: uid}, {$set:{sendIndex:idx}});
 };
 
 exports.updateUserMsg = function (uid, msg){
@@ -121,6 +127,7 @@ exports.removeUserByName = function (name, callback) {
 	db.users.findOne({username: name}, function (err, user) {
         if (user !== undefined && user !== null){
         	db.users.remove({username: name});
+        	db.devices.remove({relateid: user._id.toString()});
         	callback('success');
         } else {
         	callback('failed');
@@ -134,6 +141,7 @@ exports.removeUser = function (id, callback) {
 	db.users.findOne({_id: new BSON.ObjectID(id)}, function (err, user) {
         if (user !== undefined){
         	db.users.remove({_id: new BSON.ObjectID(id)});
+        	db.devices.remove({relateid: user._id.toString()});
         	callback('success');
         }
         else {
@@ -198,10 +206,10 @@ exports.getDevicesCount = function (uid, callback) {
 
 exports.getDevicesByPage = function (uid, page, rows, callback) {
 	"use strict";	
-	
-	db.devices.find({relateid: uid}).limit(page*rows).skip((page-1)*rows).toArray(function (err, devs){
+		
+	db.devices.find({relateid: uid}).skip((page-1)*rows).limit(rows).toArray(function (err, devs){
 		callback(devs);
-	});	
+	});
 };
 
 exports.addDevice = function (device, callback) {
@@ -230,10 +238,10 @@ exports.getHistory = function (accid, callback) {
 
 exports.getHistoryByPage = function (accid, page, rows, callback) {
 	"use strict";	
-	
-	db.history.find({accoutid: accid}).limit(page*rows).skip((page-1)*rows).toArray(function (err, history){
+		
+	db.history.find({accoutid: accid}).sort({index:1}).skip((page-1)*rows).limit(rows).toArray(function (err, history){
 		callback(history);
-	});	
+	});
 };
 
 exports.getHistoryCount = function (accid, callback) {

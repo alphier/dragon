@@ -25,7 +25,7 @@ var udpServer = new server.communicate({logger: logger});
 udpServer.addEventListener("channel-connect", function (data, id){
 	var device = udpServer.getDeviceInfo(id),
 		datetime = moment().format("YYYY-MM-DD HH:mm:ss");
-	db.updateUserStatus(id, '在线', datetime);
+	db.updateUserStatus(id, '在线',device.ip, device.port, datetime);
 	logger.info("device " + id + " connected! Device is " + JSON.stringify(device));
 });
 
@@ -36,8 +36,9 @@ udpServer.addEventListener("channel-disconnect", function (data, id){
 });
 
 udpServer.addEventListener("channel-heartbeat", function (data, id){
-	var datetime = moment().format("YYYY-MM-DD HH:mm:ss");
-	db.updateUserStatus(id, '在线', datetime);
+	var device = udpServer.getDeviceInfo(id),
+		datetime = moment().format("YYYY-MM-DD HH:mm:ss");
+	db.updateUserStatus(id, '在线',device.ip, device.port, datetime);
 	logger.info("device " + id + " heartbeat! Device is " + id);
 });
 
@@ -145,7 +146,7 @@ exports.doAddUser = function (req, res){
 		deviceid = req.body.deviceid;
 		
 	logger.info('doAddUser...user name:' + name);
-	var user = {username: name, password: password, deviceId: deviceid, state:'不在线', level: 'normal'};
+	var user = {username: name, password: password, deviceId: deviceid, state:'不在线', sendIndex: 0, level: 'normal'};
 	db.addUser(user, function (saved){
 		if (saved === 'Repeated user'){
 			res.send('用户名重复，请重新输入');
@@ -338,8 +339,12 @@ exports.doSend = function (req, res){
 									answer: answer, 	// 设备是否有应答
 									message: msg},		// 发送数据
 									function (saved){
-										if(result === 'success')
+										if(result === 'success'){
 											res.send('success');
+										}
+										else if(result === 'no answer'){
+											res.send('设备无应答！');
+										}
 										else{
 											res.send(result);
 										}
@@ -394,8 +399,8 @@ exports.getUsers = function (req, res){
 		return;
 	}
 	
-	var	page = req.query.page,
-		rows = req.query.rows;
+	var	page = parseInt(req.query.page),
+		rows = parseInt(req.query.rows);
 	
 	logger.info('getUsers...page:' + page + ' rows:' + rows);
 	db.getUsersCount(function(count){
@@ -414,8 +419,8 @@ exports.getDevices = function (req, res){
 	}
 	
 	var _id = req.session.user._id.toString(),
-		page = req.query.page,
-		rows = req.query.rows;
+		page = parseInt(req.query.page),
+		rows = parseInt(req.query.rows);
 	
 	logger.info('getDevices...page:' + page + ' rows:' + rows);
 	db.getDevicesCount(_id, function (count){
@@ -435,8 +440,8 @@ exports.getHistory = function (req, res){
 	}
 	
 	var accid = req.session.user._id.toString(),
-		page = req.query.page,
-		rows = req.query.rows;
+		page = parseInt(req.query.page),
+		rows = parseInt(req.query.rows);
 	
 	logger.info('getHistory...page:' + page + ' rows:' + rows);
 	db.getHistoryCount(accid, function (count){

@@ -14,7 +14,7 @@
 		你好！<%= user.username %>
 		<a id="quit" class="btn" href="/logout" style="font-size:16px">退出</a>
 	</div>
-	<div class="easyui-panel" title="设备" style="padding:5px;">
+	<div class="easyui-panel" title="用户" style="padding:5px;">
 		<style>.panel-title{font-size:16px}</style>
 		<button id="adduser" type="submit" class="easyui-linkbutton" data-options="iconCls:'icon-add'">
 			<span style="font-size:16px;">添加用户</span>
@@ -31,7 +31,7 @@
 		<label style="font-size:16px;">(1 ~ 65535)</label>
 		<label id="addResult" style="font-size:16px;color:red;"></label>	
 		<div style="margin:5px 0;"></div>	
-		<table id="dg" class="easyui-datagrid" style="width:800px;"	data-options="
+		<table id="dg" class="easyui-datagrid" style="width:900px;"	data-options="
 			singleSelect:true,
 			pagination:true,
 			pageSize:20,
@@ -44,12 +44,13 @@
 			</style>
 			<thead>
 				<tr>
-					<th data-options="field:'username',width:100">用户名称</th>
-					<th data-options="field:'password',width:100">密码</th>
-					<th data-options="field:'deviceId',width:100">设备编号</th>
-					<th data-options="field:'state',width:100">在线状态</th>
-					<th data-options="field:'timestamp',width:200">上次在线时间</th>
-					<th data-options="field:'_operate',width:100,align:'center',formatter:operation">操作</th>
+					<th data-options="field:'username',width:80">用户名称</th>
+					<th data-options="field:'password',width:80">密码</th>
+					<th data-options="field:'deviceId',width:80">设备编号</th>
+					<th data-options="field:'state',width:80">在线状态</th>
+					<th data-options="field:'sendIndex',width:80">发送次数</th>
+					<th data-options="field:'timestamp',width:180">上次在线时间</th>					
+					<th data-options="field:'_operate',width:80,align:'center',formatter:operation">操作</th>
 				</tr>
 			</thead>
 		</table>
