@@ -394,10 +394,15 @@ exports.getUsers = function (req, res){
 		return;
 	}
 	
-	logger.info('getUsers...');
-	db.getAllUsers(function (users){
-		res.send({total:users.length, rows:users});
-	});	
+	var	page = req.query.page,
+		rows = req.query.rows;
+	
+	logger.info('getUsers...page:' + page + ' rows:' + rows);
+	db.getUsersCount(function(count){
+		db.getUsersByPage(page, rows, function (users){
+			res.send({total:count, rows:users});
+		});		
+	});
 };
 
 exports.getDevices = function (req, res){

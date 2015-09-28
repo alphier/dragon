@@ -40,7 +40,7 @@ exports.getUsersCount = function (callback) {
 exports.getUsersByPage = function (page, rows, callback) {
 	"use strict";	
 	
-	db.users.find({}).limit(page*rows).skip((page-1)*rows).toArray(function (err, users){
+	db.users.find({level: 'normal'}).limit(page*rows).skip((page-1)*rows).toArray(function (err, users){
 		callback(users);
 	});	
 };
