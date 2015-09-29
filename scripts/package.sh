@@ -26,6 +26,10 @@ echo "Dragon $1" > $B_DIR/version
 
 echo "Packing..."
 cd $T_DIR
+if [ -d "$B_DIR/portal/log/" ]; then
+   rm -rf $B_DIR/portal/log/
+   mkdir $B_DIR/portal/log/
+fi
 tar zcf site.tar.gz dragon
 tar zcf temp.tar.gz *.gz
 cat install.sh temp.tar.gz > dragon.bin
