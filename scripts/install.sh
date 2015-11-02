@@ -2,6 +2,7 @@
 
 INSTALL_PATH="/mnt"
 DRAGON_HOME="$INSTALL_PATH/dragon"
+dbURL=localhost/devicedb
 DB_DIR="$INSTALL_PATH/mongodb"
 LOG_DIR="$DB_DIR"
 TMP_PATH="/tmp/dragon_install"
@@ -56,6 +57,17 @@ run_mong(){
         mongod --journal --dbpath $DB_DIR --logpath $LOG_DIR/mongo.log --logappend --fork &
         sleep 5
     fi
+}
+
+add_admin(){
+	USEROBJ=`mongo $dbURL --quiet --eval "db.users.findOne({username:'admin'})"`
+	if [ "$USEROBJ" = "null" ]; then
+		ADDOBJ=`mongo $dbURL --quiet --eval "db.users.save({username:'admin',password:'123',level:'super'})"`
+		CHECKADMIN=`mongo $dbURL --quiet --eval "db.users.findOne({username:'admin'})"`
+		if [ ! "$CHECKADMIN" = "null" ]; then
+			echo 'add admin succeed!'
+		fi
+	fi
 }
 
 unpack_package(){
@@ -155,7 +167,8 @@ do
 			unpack_package
 			remove_dragon
 			run_mong
-			install_dragon							
+			install_dragon
+			add_admin
 			STOP_SERVICE=""
 			REMOVE_DRAGON=""
 			echo "Dragon Install Done"
