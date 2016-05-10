@@ -1,7 +1,8 @@
 var collections = ["users", "devices", "history"],
 	databaseUrl = "localhost/devicedb",
 	BSON = require('mongodb').BSONPure,
-	db = require("mongojs").connect(databaseUrl, collections);
+	db = require("mongojs").connect(databaseUrl, collections),
+	moment = require('moment');
 
 ////////////////////////user table//////////////////////////////
 exports.getUser = function (name, callback) {
@@ -50,6 +51,17 @@ exports.getUserById = function (id, callback) {
 	
 	db.users.findOne({_id: new BSON.ObjectID(id)}, function (err, user) {
         callback(user);
+    });
+};
+
+exports.getUserSendIdx = function (devId, callback){
+	"use strict";
+	
+	db.users.findOne({deviceId: devId}, function (err, user) {
+		if(user)
+			callback(user.sendIndex);
+		else
+			callback(null);
     });
 };
 
@@ -109,10 +121,34 @@ exports.updateUserStatus = function (uid, status, ip, port, ts){
 		db.users.update({deviceId: uid}, {$set:{state:status}});
 };
 
-exports.updateUserSendIndex = function (uid, idx){
+exports.updateUserSendIndex = function (uid){
 	"use strict";
 		
-	db.users.update({deviceId: uid}, {$set:{sendIndex:idx}});
+	db.users.findOne({deviceId: uid}, function (err, user) {
+        if(user){
+        	var idx = parseInt(user.sendIndex) + 1;
+        	if(idx > 255) idx = 0;
+        	db.users.update({deviceId: uid}, {$set:{sendIndex:idx}});
+        }
+    });
+};
+
+exports.updateHistorySendIndex = function (id, idx){
+	"use strict";
+		
+	db.history.update({_id: new BSON.ObjectID(id)}, {$set:{sendIndex:idx}});
+};
+
+exports.updateHistoryTime = function (id){
+	"use strict";
+		
+	db.history.update({_id: new BSON.ObjectID(id)}, {$set:{time:moment().format("YYYY-MM-DD HH:mm:ss")}});
+};
+
+exports.updateHistoryAnswer = function (id,ans){
+	"use strict";
+		
+	db.history.update({_id: new BSON.ObjectID(id)}, {$set:{answer:ans}});
 };
 
 exports.updateUserMsg = function (uid, msg){

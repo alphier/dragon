@@ -196,7 +196,7 @@ exports.communicate = function (spec) {
 								clearInterval(intervalId);
 								callback('answer', bytes);
 							}
-							//2s没有收到answer，认为无应答
+							//10s没有收到answer，认为无应答
 							if(new Date() - hashMap[deviceId].sendTs > TIMEOUT_SENDING){
 								logger.debug('!!!!!!!!!!!!!setID answer timeout...');
 								hashMap[deviceId].state = READY;
@@ -232,7 +232,7 @@ exports.communicate = function (spec) {
 								clearInterval(intervalId);
 								callback('answer', bytes);
 							}
-							//2s没有收到answer，认为无应答
+							//10s没有收到answer，认为无应答
 							if(new Date() - hashMap[deviceId].sendTs > TIMEOUT_SENDING){
 								logger.debug('!!!!!!!!!!!!!RemoteDel answer  timeout...');
 								hashMap[deviceId].state = READY;
@@ -250,21 +250,18 @@ exports.communicate = function (spec) {
 		}
 	};
 	
-	that.send = function(deviceId, userId, channel, type, msg, callback) {
+	that.send = function(deviceId, userId, channel, sendIdx, msg, callback) {
 		"use strict";
 		
-		if(hashMap.hasOwnProperty(deviceId)){			
-			hashMap[deviceId].sendIdx += 1;
-			if(hashMap[deviceId].sendIdx > MAX_INDEX)
-				hashMap[deviceId].sendIdx = 0;
-			db.updateUserSendIndex(deviceId,hashMap[deviceId].sendIdx);
-			var buf = assembleMsgPacket(msg, channel, userId, hashMap[deviceId].sendIdx);
+		if(hashMap.hasOwnProperty(deviceId)){
+			var buf = assembleMsgPacket(msg, channel, userId, sendIdx);
 			server.send(buf, 0, buf.length, hashMap[deviceId].port, hashMap[deviceId].ip, 
 				function (err, bytes){
 					logger.info('sending ' + bytes +  ' bytes to ' + hashMap[deviceId].ip + ':' + hashMap[deviceId].port);
 					if(bytes > 0){
 						hashMap[deviceId].state = SENDING;						
 						hashMap[deviceId].sendTs = new Date();
+						hashMap[deviceId].sendIdx = sendIdx;
 						var intervalId = setInterval(function (){
 							//收到设备应答
 							if(hashMap[deviceId].state === RECEIVE_ANSWER){
@@ -273,7 +270,7 @@ exports.communicate = function (spec) {
 								callback('answer', bytes);
 							}
 							
-							//2s没有收到answer，认为无应答
+							//10s没有收到answer，认为无应答
 							if(new Date() - hashMap[deviceId].sendTs > TIMEOUT_SENDING){
 								hashMap[deviceId].state = READY;
 								clearInterval(intervalId);

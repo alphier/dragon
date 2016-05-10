@@ -2,7 +2,8 @@ var db = require('../lib/dataBase'),
 	moment = require('moment'),
 	server = require('../lib/communicate'),
 	log4js = require('log4js'),
-	MAX_LENGTH = 80;
+	MAX_LENGTH = 80,
+	MAX_INDEX = 255;
 
 log4js.configure({
     appenders: [
@@ -286,22 +287,27 @@ function splitMsg(msg, max){
 	return msgArr;
 };
 
-function send(devId, uId, chId, msgarr, callback){
+function send(devId, uId, chId, msgarr, sIdx, callback){
 	var msg = msgarr[0];
 	if(!msg) {
 		logger.info('send over!!!');
-		callback('success');
+		callback('success', sIdx);
 		return;
 	}
-	logger.info('send ', msg);
-	udpServer.send(devId, uId, chId, 0, msg, function (err, bytes){
+	logger.info('send message to device ' + devId + '. sendIndex is ' + sIdx + '. message is ' + msg);
+	udpServer.send(devId, uId, chId, sIdx, msg, function (err, bytes){
 		if(err === 'answer'){
 			logger.info('send succeed!!!');
 			msgarr.splice(0,1);
-			send(devId, uId, chId, msgarr, callback);
+			sIdx += 1;
+			if(sIdx > MAX_INDEX) {
+				logger.info('send message to device ' + devId + ' exceed 255 times!');
+				sIdx = 0;
+			}
+			send(devId, uId, chId, msgarr, sIdx, callback);
 		}else {
 			logger.error('send failed...', err);
-			callback(err);
+			callback(err, -1);
 			return;
 		}
 	});
@@ -325,38 +331,112 @@ exports.doSend = function (req, res){
 	db.getDeviceByUserId(accid, uid, function(device){
 		if(device !== undefined && device !== null){
 			var msgArray = splitMsg(msg, MAX_LENGTH);
-			send(req.session.user.deviceId, uid, ch, msgArray, function(result){
-				var answer = "N";
-				if(result === 'success'){
-					answer = "Y";
+			var sendIdx = -1;
+			db.getUserSendIdx(req.session.user.deviceId, function(idx){
+				if(idx){
+					sendIdx = idx + 1;
+					if(sendIdx > MAX_INDEX) {
+						sendIdx = 0;
+					}
+					send(req.session.user.deviceId, uid, ch, msgArray, sendIdx, function(result, sIndex){
+						var answer = "N";
+						if(result === 'success'){
+							answer = "Y";
+							// 发送成功后，更新db中设备发送索引为递归最后一次发送的索引
+							db.updateUserSendIndex(req.session.user.deviceId);
+						}else{
+							sendIdx = -1;
+						}
+						db.getHistoryNumber(accid, function (num){
+							db.addToHistory({accoutid: accid, 	// user表_id
+											userid: uid,		// device表userid
+											channel: ch,		// device表channel
+											index: num+1, 		// 编号
+											sendIndex: sendIdx,	// 设备初始发送索引,由于是递归发送，此处填写第一个发送索引
+											time: datetime, 	// 发送时间戳
+											answer: answer, 	// 设备是否有应答
+											message: msg},		// 发送数据
+											function (saved){
+												if(result === 'success'){
+													res.send('success');
+												}
+												else if(result === 'no answer'){
+													res.send('设备无应答！');
+												}
+												else{
+													//发送错误 或 设备未上线
+													res.send(result);
+												}
+											});	
+						});				
+					});
 				}
-				db.getHistoryNumber(accid, function (num){
-					db.addToHistory({accoutid: accid, 	// user表_id
-									userid: uid,		// device表userid
-									channel: ch,		// device表channel
-									index: num+1, 		// 编号
-									time: datetime, 	// 发送时间戳
-									answer: answer, 	// 设备是否有应答
-									message: msg},		// 发送数据
-									function (saved){
-										if(result === 'success'){
-											res.send('success');
-										}
-										else if(result === 'no answer'){
-											res.send('设备无应答！');
-										}
-										else{
-											res.send(result);
-										}
-									});	
-				});				
 			});
 		} else {
 			logger.info('doSend failed, caused by [' + uid + ':' + ch + '] not found!');
 			res.send("设备 [" + uid + ":" + ch + "] 未找到，请重新添加！");
 		}
 	});
+};
+
+exports.doResend = function (req, res){
+	"use strict";
 	
+	if(!req.session.user){
+		res.send('session expired');
+		return;
+	}
+	
+	var hid = req.body.hisid,
+		msg = req.body.message,
+		uid = req.body.userid,
+		ch = req.body.channel,
+		sendIdx = parseInt(req.body.sendIndex),
+		accid = req.session.user._id.toString(),
+		datetime = moment().format("YYYY-MM-DD HH:mm:ss");
+	
+	logger.info('doResend...userid:' + uid + ' channel:' + ch + ' message:' + msg);
+	db.getDeviceByUserId(accid, uid, function(device){
+		if(device !== undefined && device !== null){
+			var msgArray = splitMsg(msg, MAX_LENGTH);
+			db.getUserSendIdx(req.session.user.deviceId, function(idx){
+				var bNewSend = false;
+				//当history表中的sendIndex<0表明发送失败，此时发送索引重新计算
+				if(sendIdx < 0){
+					if(idx){
+						sendIdx = idx + 1;
+						if(sendIdx > MAX_INDEX) {
+							sendIdx = 0;
+						}
+					}
+					bNewSend = true;
+				}
+				send(req.session.user.deviceId, uid, ch, msgArray, sendIdx, function(result, sIndex){
+					//更新时间
+					db.updateHistoryTime(hid);
+					if(result === 'success'){// 发送成功后，更新db中设备发送索引为递归最后一次发送的索引
+						db.updateHistoryAnswer(hid,'Y');
+						if(bNewSend){
+							db.updateUserSendIndex(req.session.user.deviceId);
+							db.updateHistorySendIndex(hid,sendIdx);
+						}
+						res.send('success');
+					}else if(result === 'no answer'){
+						db.updateHistoryAnswer(hid,'N');
+						res.send('设备无应答！');
+					}else{
+						db.updateHistoryAnswer(hid,'N');
+						//发送错误 或 设备未上线
+						res.send(result);
+					}
+				});
+			});
+			
+		} else {
+			logger.info('doSend failed, caused by [' + uid + ':' + ch + '] not found!');
+			res.send("设备 [" + uid + ":" + ch + "] 未找到，请重新添加！");
+		}
+	});
 };
 
 exports.doDeleteDevice = function (req, res) {

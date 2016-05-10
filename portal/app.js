@@ -50,6 +50,7 @@ app.post('/deleteDevice', routes.doDeleteDevice);
 app.post('/clearHistory', routes.doClearHistory);
 
 app.post('/sendMessage', routes.doSend);
+app.post('/resendMessage', routes.doResend);
 app.post('/modifyPwd', routes.doModifyPwd);
 app.post('/remoteDelete', routes.doRemoteDel);
 app.post('/setID', routes.doSetID);

@@ -82,7 +82,9 @@ function deleteUser(index){
 	var row = $('#dg').datagrid('getSelected');		
 	$.post('deleteUser',{name: row.username},function(data, status){
 		if (data === 'success'){
-			$("#result").css({"color":"black"});
+			$("#delResult").css({"color":"black"});
+			$("#delResult").html("删除成功！");
+			setTimeout('$("#delResult").html("")',5000);
 			$('#dg').datagrid('reload');
 		}else if(data === 'session expired'){
 			window.location = "/";
@@ -90,6 +92,7 @@ function deleteUser(index){
 		else {
 			$("#delResult").css({"color":"red"});
 			$("#delResult").html("删除失败！");
+			setTimeout('$("#delResult").html("")',5000);
 		}
 	});			
 }
@@ -162,25 +165,28 @@ function sendMsg() {
 	if (!row){
 		$("#result").css({"color":"red"});
 		$("#result").html("请选中一行");
+		setTimeout('$("#result").html("")',5000);
 		return;
 	}
-	if($('#content').textbox('getText') === ''){
+	if($('#content').textbox('getText').trim() === ''){
 		$("#result").css({"color":"red"});
 		$("#result").html("发送内容不能为空！");
+		setTimeout('$("#result").html("")',5000);
 		return;
 	}
-	$.post('sendMessage',{userid:row.userid, channel:row.channel, message: $('#content').textbox('getText')}, function(data, status){
+	$.post('sendMessage',{userid:row.userid, channel:row.channel, message: $('#content').textbox('getText').trim()}, function(data, status){
 		if (data === 'success'){
 			$("#result").css({"color":"black"});
 			$("#result").html("发送成功！");
-			$('#hisdg').datagrid('reload');
+			setTimeout('$("#result").html("")',5000);
 		} else if(data === 'session expired'){
 			window.location = "/";
-		}
-		else {
+		}else {
 			$("#result").css({"color":"red"});
-			$("#result").html(data);				
+			$("#result").html(data);
+			setTimeout('$("#result").html("")',5000);
 		}
+		$('#hisdg').datagrid('reload');
 	});
 }
 function clear() {
@@ -199,18 +205,21 @@ function setID() {
     if (!row){
             $("#delResult").css({"color":"red"});
             $("#delResult").html("请选中一行");
+			setTimeout('$("#delResult").html("")',5000);
             return;
     }
     $.post('setID', {userid:row.userid, channel:row.channel}, function(data, status){
             if (data === 'success'){
                     $("#delResult").css({"color":"black"});
                     $("#delResult").html("设置成功");
+        			setTimeout('$("#delResult").html("")',5000);
             } else if(data === 'session expired'){
                     window.location = "/";
             }
             else {
                     $("#delResult").css({"color":"red"});
                     $("#delResult").html(data);
+        			setTimeout('$("#delResult").html("")',5000);
             }
     });
 }
@@ -220,18 +229,21 @@ function remoteDel() {
 	if (!row){
 		$("#delResult").css({"color":"red"});
 		$("#delResult").html("请选中一行");
+		setTimeout('$("#delResult").html("")',5000);
 		return;
 	}
 	$.post('remoteDelete', {userid:row.userid, channel:row.channel}, function(data, status){
 		if (data === 'success'){
 			$("#delResult").css({"color":"black"});
 			$("#delResult").html("删除成功");
+			setTimeout('$("#delResult").html("")',5000);
 		} else if(data === 'session expired'){
 			window.location = "/";
 		}
 		else {
 			$("#delResult").css({"color":"red"});
 			$("#delResult").html(data);
+			setTimeout('$("#delResult").html("")',5000);
 		}
 	});
 }
@@ -243,18 +255,22 @@ function retransmit(index){
 	$("#retransResult").html("");
 	$('#hisdg').datagrid('selectRow',index);
 	var row = $('#hisdg').datagrid('getSelected');
-	$.post('sendMessage',{userid:row.userid, channel:row.channel, message: row.message},function(data, status){
+	var sIdx = -1;
+	if(row.hasOwnProperty('sendIndex'))
+		sIdx = row.sendIndex;
+	$.post('resendMessage',{hisid:row._id, userid:row.userid, channel:row.channel, message: row.message, sendIndex:sIdx},function(data, status){
 		if (data === 'success'){
 			$("#retransResult").css({"color":"black"});
 			$("#retransResult").html("发送成功！");
-			$('#hisdg').datagrid('reload');
+			setTimeout('$("#retransResult").html("")',5000);
 		} else if(data === 'session expired'){
 			window.location = "/";
-		}
-		else {
+		}else {
 			$("#retransResult").css({"color":"red"});
 			$("#retransResult").html(data);
+			setTimeout('$("#retransResult").html("")',5000);
 		}
+		$('#hisdg').datagrid('reload');
 	});
 }
 function formatOper(val,row,index){  
@@ -267,7 +283,9 @@ function deleteDevice(index){
 	var row = $('#dg').datagrid('getSelected');		
 	$.post('deleteDevice',{id: row._id},function(data, status){
 		if (data === 'success'){
-			$("#result").css({"color":"black"});
+			$("#delResult").css({"color":"black"});
+			$("#delResult").html("删除成功！");
+			setTimeout('$("#delResult").html("")',5000);
 			$('#dg').datagrid('reload');
 		}else if(data === 'session expired'){
 			window.location = "/";
@@ -275,6 +293,7 @@ function deleteDevice(index){
 		else {
 			$("#delResult").css({"color":"red"});
 			$("#delResult").html("删除失败！");
+			setTimeout('$("#delResult").html("")',5000);
 		}
 	});
 } 
