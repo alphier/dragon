@@ -2,7 +2,7 @@ var dgram = require('dgram'),
 	client = dgram.createSocket('udp4'),
 	iconv = require('iconv-lite'),
 	PORT = 1000,
-	HOST = 'localhost';
+	HOST = '107.183.146.221';
 
 function dtstr(){
     var dt = new Date();
@@ -25,7 +25,7 @@ function start(){
 	setInterval(function(){
 		client.send(cMsg, 0, cMsg.length, PORT, HOST, function(err, bytes) {
 			if (err) throw err;
-			//console.log(dtstr() + 'Connecting!!!' + HOST + ':' + PORT);
+			console.log(dtstr() + 'Connecting!!!' + HOST + ':' + PORT);
 		});
 	}, 5000);
 };
@@ -52,7 +52,7 @@ client.on('message', function (msg, remote) {
 		});
 	}
 	if(data[0] === 0xaa && data[1] === 0x5b){	//心跳回复
-		//console.log(dtstr() + 'receive hearbeat answer!!!',buffer);
+		console.log(dtstr() + 'receive hearbeat answer!!!',buffer);
 	}
 	if(data[0] === 0xaa && data[1] === 0xc0){	//设置ID
 		console.log(dtstr() + 'receive set id message!!!',buffer);

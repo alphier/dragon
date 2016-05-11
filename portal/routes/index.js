@@ -333,7 +333,7 @@ exports.doSend = function (req, res){
 			var msgArray = splitMsg(msg, MAX_LENGTH);
 			var sendIdx = -1;
 			db.getUserSendIdx(req.session.user.deviceId, function(idx){
-				if(idx){
+				if(idx !== undefined){
 					sendIdx = idx + 1;
 					if(sendIdx > MAX_INDEX) {
 						sendIdx = 0;
