@@ -71,7 +71,7 @@ exports.communicate = function (spec) {
 			msgbuffer.writeUInt8(parseInt(ch), 2);			//频道号
 			msgbuffer.writeUInt16BE(parseInt(uid), 3);		//用户ID
 			var offset = 0;
-			if(idx > 0 && idx < 256){
+			if(idx >= 0 && idx < 256){
 				msgbuffer.writeUInt8(len+3, 5);			//数据长度+编号(1字节)+开始位(1字节)+校验和(1字节)
 				msgbuffer.writeUInt8(idx, 6);			//数据编号
 				offset = 7;
