@@ -333,44 +333,45 @@ exports.doSend = function (req, res){
 			var msgArray = splitMsg(msg, MAX_LENGTH);
 			var sendIdx = -1;
 			db.getUserSendIdx(req.session.user.deviceId, function(idx){
-				if(idx !== undefined){
-					sendIdx = idx + 1;
-					if(sendIdx > MAX_INDEX) {
-						sendIdx = 0;
-					}
-					send(req.session.user.deviceId, uid, ch, msgArray, sendIdx, function(result, sIndex){
-						var answer = "N";
-						if(result === 'success'){
-							answer = "Y";
-							// 发送成功后，更新db中设备发送索引为递归最后一次发送的索引
-							db.updateUserSendIndex(req.session.user.deviceId);
-						}else{
-							sendIdx = -1;
-						}
-						db.getHistoryNumber(accid, function (num){
-							db.addToHistory({accoutid: accid, 	// user表_id
-											userid: uid,		// device表userid
-											channel: ch,		// device表channel
-											index: num+1, 		// 编号
-											sendIndex: sendIdx,	// 设备初始发送索引,由于是递归发送，此处填写第一个发送索引
-											time: datetime, 	// 发送时间戳
-											answer: answer, 	// 设备是否有应答
-											message: msg},		// 发送数据
-											function (saved){
-												if(result === 'success'){
-													res.send('success');
-												}
-												else if(result === 'no answer'){
-													res.send('设备无应答！');
-												}
-												else{
-													//发送错误 或 设备未上线
-													res.send(result);
-												}
-											});	
-						});				
-					});
+				if(idx === undefined) {
+					idx = -1;
 				}
+				sendIdx = idx + 1;
+				if(sendIdx > MAX_INDEX) {
+					sendIdx = 0;
+				}
+				send(req.session.user.deviceId, uid, ch, msgArray, sendIdx, function(result, sIndex){
+					var answer = "N";
+					if(result === 'success'){
+						answer = "Y";
+						// 发送成功后，更新db中设备发送索引为递归最后一次发送的索引
+						db.updateUserSendIndex(req.session.user.deviceId);
+					}else{
+						sendIdx = -1;
+					}
+					db.getHistoryNumber(accid, function (num){
+						db.addToHistory({accoutid: accid, 	// user表_id
+										userid: uid,		// device表userid
+										channel: ch,		// device表channel
+										index: num+1, 		// 编号
+										sendIndex: sendIdx,	// 设备初始发送索引,由于是递归发送，此处填写第一个发送索引
+										time: datetime, 	// 发送时间戳
+										answer: answer, 	// 设备是否有应答
+										message: msg},		// 发送数据
+										function (saved){
+											if(result === 'success'){
+												res.send('success');
+											}
+											else if(result === 'no answer'){
+												res.send('设备无应答！');
+											}
+											else{
+												//发送错误 或 设备未上线
+												res.send(result);
+											}
+										});	
+					});				
+				});
 			});
 		} else {
 			logger.info('doSend failed, caused by [' + uid + ':' + ch + '] not found!');
@@ -402,12 +403,13 @@ exports.doResend = function (req, res){
 			db.getUserSendIdx(req.session.user.deviceId, function(idx){
 				var bNewSend = false;
 				//当history表中的sendIndex<0表明发送失败，此时发送索引重新计算
+				if(idx === undefined){
+					idx = -1;
+				}
 				if(sendIdx < 0){
-					if(idx){
-						sendIdx = idx + 1;
-						if(sendIdx > MAX_INDEX) {
-							sendIdx = 0;
-						}
+					sendIdx = idx + 1;
+					if(sendIdx > MAX_INDEX) {
+						sendIdx = 0;
 					}
 					bNewSend = true;
 				}
